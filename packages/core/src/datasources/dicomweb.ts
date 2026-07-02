@@ -17,13 +17,8 @@ import type { AuthStrategy } from "../auth";
 import { authHeaders } from "../auth";
 import { buildWadoRsImageId } from "../imageIds";
 import { srTreeFromJson } from "../sr/from-json";
-import {
-  isSegmentation,
-  parseSeg,
-  mapFramesToSegments,
-  unpackBinarySegmentationFrames,
-  buildSegLabelmaps,
-} from "../seg/parse";
+import { isSegmentation, parseSeg } from "../seg/parse";
+import { decodeSegmentation } from "../seg/decode";
 
 const TAG = {
   SERIES_UID: "0020000E",
@@ -336,8 +331,6 @@ export class DicomWebDataSource implements DataSource {
     void series;
     const meta = this.segMetaBySop.get(seg.sopUid);
     if (!meta) throw new Error(`DicomWebDataSource: no SEG metadata for SOP ${seg.sopUid}`);
-    const info = parseSeg(meta);
-    const frameMap = mapFramesToSegments(meta);
     const pd = meta[TAG.PIXEL_DATA] as { BulkDataURI?: string } | undefined;
     if (!pd?.BulkDataURI) throw new Error(`SEG ${seg.sopUid} has no PixelData BulkDataURI`);
 
@@ -350,13 +343,7 @@ export class DicomWebDataSource implements DataSource {
       await res.arrayBuffer(),
       res.headers.get("Content-Type") ?? "",
     );
-    const masks = unpackBinarySegmentationFrames(
-      new Uint8Array(payload),
-      info.rows,
-      info.columns,
-      info.numberOfFrames,
-    );
-    return { info, labelmaps: buildSegLabelmaps(info, masks, frameMap) };
+    return decodeSegmentation(meta, new Uint8Array(payload));
   }
 
   /** Encapsulated PDFs found during the last {@link getImageIds} for this series. */

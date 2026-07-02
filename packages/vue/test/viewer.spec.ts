@@ -127,6 +127,17 @@ vi.mock("@orbidicom/core", () => {
         : { cellCount: 1, assignments: [ser.length ? 0 : -1] },
     VR_PRESETS: ["CT-Bone", "CT-Soft-Tissue", "CT-Lung", "MR-Default"],
     defaultVrPreset: (m?: string) => (String(m).toUpperCase() === "MR" ? "MR-Default" : "CT-Bone"),
+    // AI & Results (Phase 1) — the Viewer imports these at module scope. Stubs are
+    // enough for the gate tests (the panel opens without invoking any of them).
+    importResults: vi.fn(() => ({
+      schema: "orbidicom.ai-results/v1",
+      provenance: {},
+      results: [],
+    })),
+    applyResultSet: vi.fn(async () => ({ annotationUids: [], segmentationIds: [] })),
+    removeApplied: vi.fn(),
+    removeAppliedSegmentations: vi.fn(),
+    exportAccepted: vi.fn(() => "{}"),
     TOOLS: {
       WindowLevel: "WindowLevel",
       Pan: "Pan",
@@ -552,5 +563,27 @@ describe("Viewer", () => {
 
     await presetSelect.setValue("CT-Lung");
     expect(mprHandle.setPreset).toHaveBeenCalledWith("CT-Lung");
+  });
+
+  it("hides the AI & Results button and panel by default (no features prop)", async () => {
+    const w = mount(Viewer, { props: { source: source as never } });
+    await flushPromises();
+    expect(w.find(".tbtn--ai").exists()).toBe(false);
+    expect(w.find(".aipanel").exists()).toBe(false);
+  });
+
+  it("shows the AI & Results button when features.aiResults is on, and toggles the panel", async () => {
+    const w = mount(Viewer, {
+      props: { source: source as never, features: { aiResults: true } },
+    });
+    await flushPromises();
+    const btn = w.find(".tbtn--ai");
+    expect(btn.exists()).toBe(true);
+    // Button gates the panel: hidden until first click, shown after.
+    expect(w.find(".aipanel").exists()).toBe(false);
+    await btn.trigger("click");
+    expect(w.find(".aipanel").exists()).toBe(true);
+    await btn.trigger("click");
+    expect(w.find(".aipanel").exists()).toBe(false);
   });
 });

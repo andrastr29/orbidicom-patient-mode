@@ -25,6 +25,19 @@ describe("serve", () => {
     }
   });
 
+  it("serves an injected config.js with features.aiResults when --ai is set", async () => {
+    const root = mkdtempSync(join(tmpdir(), "orbi-"));
+    writeFileSync(join(root, "index.html"), "<!doctype html><title>x</title>");
+    const s = await serve(opts({ ai: true }), root);
+    try {
+      const res = await fetch(`http://localhost:${s.port}/config.js`);
+      const body = await res.text();
+      expect(body).toContain("features: { aiResults: true }");
+    } finally {
+      await s.close();
+    }
+  });
+
   it("binds an OS-assigned port when port is 0 and serves static files", async () => {
     const root = mkdtempSync(join(tmpdir(), "orbi-"));
     writeFileSync(join(root, "index.html"), "<!doctype html><title>orbi</title>");

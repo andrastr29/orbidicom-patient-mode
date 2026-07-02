@@ -21,7 +21,15 @@ export * from "./datasources/local";
 export * from "./datasources/nifti";
 export * from "./datasources/dicomjson";
 export * from "./seg/parse";
+export * from "./seg/decode";
 export * from "./sr/to-json";
+export * from "./ai/types";
+export * from "./ai/stats";
+export * from "./ai/errors";
+export * from "./ai/import";
+export * from "./ai/measurement-to-annotation";
+export * from "./ai/apply";
+export * from "./ai/export";
 // Side-effect import: registers the built-in adapters into the data-source
 // factory registry (keep last so the source modules above are initialized).
 import "./datasources/builtins";

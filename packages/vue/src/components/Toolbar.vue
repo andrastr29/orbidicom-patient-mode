@@ -427,6 +427,15 @@
       </button>
     </template>
 
+    <!-- Open the AI & Results right-dock panel. Shown only when the deployment
+         enables it (features.aiResults). -->
+    <template v-if="canAiResults">
+      <div class="toolbar__sep" />
+      <button v-tip="'AI & Results'" class="tbtn tbtn--ai" @click="$emit('openAiResults')">
+        AI
+      </button>
+    </template>
+
     <!-- Custom hover tooltip. Teleported to the .orbidicom container so it inherits
          the theme tokens (they're scoped to that container, not :root) while its
          fixed positioning still escapes the toolbar's horizontal-scroll overflow. -->
@@ -480,6 +489,8 @@ const props = defineProps<{
   canMpr?: boolean;
   /** Whether the viewer is currently in MPR mode (so the selector shows "MPR"). */
   mprActive?: boolean;
+  /** Whether the AI & Results panel is available (features.aiResults). */
+  canAiResults?: boolean;
 }>();
 const emit = defineEmits<{
   preset: [WlPreset];
@@ -501,6 +512,7 @@ const emit = defineEmits<{
   downloadStudy: [];
   downloadImage: [];
   exportMeasurements: ["json" | "csv"];
+  openAiResults: [];
 }>();
 
 const mode = computed(() => props.overlayMode ?? "full");
@@ -759,6 +771,14 @@ onUnmounted(() => clearTimeout(tipTimer));
   color: #ffcf6b;
   background: color-mix(in srgb, #b9852a 35%, transparent);
   border-color: #b9852a;
+}
+/* Text-only AI button: same 34px chip as the icon buttons, sized for its label. */
+.tbtn--ai {
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
 }
 /* Key-image count badge, pinned to the top-right of the star toggle. */
 .tbtn--keyimage {

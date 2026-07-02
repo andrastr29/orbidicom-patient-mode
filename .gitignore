@@ -13,3 +13,6 @@ packages/cli/public/
 
 # Internal planning/spec docs — not part of the OSS distribution
 docs/superpowers/
+
+# Brainstorming visual-companion scratch dir
+.superpowers/

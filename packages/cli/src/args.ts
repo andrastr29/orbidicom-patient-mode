@@ -13,6 +13,8 @@ export interface CliOptions {
   port: number;
   open: boolean;
   rest: string[];
+  /** Enable the in-app AI & Results panel (serve). */
+  ai?: boolean;
 }
 
 const COMMANDS = new Set<Command>(["serve", "init", "ai", "generate"]);
@@ -56,6 +58,9 @@ export function parseArgs(argv: string[]): CliOptions {
         break;
       case "--no-open":
         opts.open = false;
+        break;
+      case "--ai":
+        opts.ai = true;
         break;
       default:
         if (a) opts.rest.push(a);

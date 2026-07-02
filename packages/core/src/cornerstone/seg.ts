@@ -85,3 +85,17 @@ export function removeSegmentationFromViewport(viewportId: string, segmentationI
     type: csToolsEnums.SegmentationRepresentations.Labelmap,
   });
 }
+
+/**
+ * Fully remove a segmentation from global state — its state entry AND all of its
+ * viewport representations (unlike {@link removeSegmentationFromViewport}, which
+ * only strips a single viewport's representation and leaves the global entry, so
+ * re-adding the same `segmentationId` would throw "already exists").
+ *
+ * `segmentation.removeSegmentation` (@cornerstonejs/tools 5.0.13) tears down every
+ * viewport representation for the id and then deregisters it from the state
+ * manager, so the id is free to be added again on the next re-apply.
+ */
+export function removeAiSegmentation(segmentationId: string): void {
+  segmentation.removeSegmentation(segmentationId);
+}

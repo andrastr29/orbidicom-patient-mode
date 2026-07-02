@@ -36,3 +36,9 @@ describe("parseArgs", () => {
     expect(parseArgs(["--auth", "cookie"]).auth).toBe("cookie");
   });
 });
+
+describe("parseArgs --ai", () => {
+  it("sets ai:true on the serve command", () => {
+    expect(parseArgs(["serve", "--ai"]).ai).toBe(true);
+  });
+});

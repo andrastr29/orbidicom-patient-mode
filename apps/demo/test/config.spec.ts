@@ -6,6 +6,7 @@ describe("mergeConfig", () => {
     expect(mergeConfig({ pacsUrl: "/dicom-web", studyUid: "1.2.3" }, "")).toEqual({
       pacsUrl: "/dicom-web",
       studyUid: "1.2.3",
+      features: { aiResults: false },
     });
   });
 
@@ -15,7 +16,11 @@ describe("mergeConfig", () => {
         { pacsUrl: "/dicom-web", studyUid: "1.2.3" },
         "?pacs=https://pacs.example/dicom-web&study=9.9.9",
       ),
-    ).toEqual({ pacsUrl: "https://pacs.example/dicom-web", studyUid: "9.9.9" });
+    ).toEqual({
+      pacsUrl: "https://pacs.example/dicom-web",
+      studyUid: "9.9.9",
+      features: { aiResults: false },
+    });
   });
 
   it("preserves dotted Study Instance UIDs from the URL", () => {
@@ -28,11 +33,16 @@ describe("mergeConfig", () => {
     expect(mergeConfig({ pacsUrl: "/dicom-web" }, "?pacs=&study=%20%20")).toEqual({
       pacsUrl: "/dicom-web",
       studyUid: "",
+      features: { aiResults: false },
     });
   });
 
   it("defaults to empty strings when nothing is configured", () => {
-    expect(mergeConfig({}, "")).toEqual({ pacsUrl: "", studyUid: "" });
+    expect(mergeConfig({}, "")).toEqual({
+      pacsUrl: "",
+      studyUid: "",
+      features: { aiResults: false },
+    });
   });
 
   it("carries auth through from the base config but never from query params", () => {
@@ -44,5 +54,17 @@ describe("mergeConfig", () => {
     const merged = mergeConfig(base, "?auth=none&pacs=/x");
     expect(merged.auth).toEqual({ kind: "bearer", token: "secret" });
     expect(merged.pacsUrl).toBe("/x"); // pacs/study stay overridable
+  });
+});
+
+describe("mergeConfig features", () => {
+  it("keeps features from the base config", () => {
+    expect(mergeConfig({ features: { aiResults: true } }, "").features?.aiResults).toBe(true);
+  });
+  it("enables aiResults via ?ai=1", () => {
+    expect(mergeConfig({}, "?ai=1").features?.aiResults).toBe(true);
+  });
+  it("defaults aiResults off", () => {
+    expect(mergeConfig({}, "").features?.aiResults).toBe(false);
   });
 });
