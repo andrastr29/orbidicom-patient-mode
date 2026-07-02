@@ -21,6 +21,7 @@ export * from "./datasources/local";
 export * from "./datasources/nifti";
 export * from "./datasources/dicomjson";
 export * from "./seg/parse";
+export * from "./seg/decode";
 export * from "./sr/to-json";
 export * from "./ai/types";
 // Side-effect import: registers the built-in adapters into the data-source
