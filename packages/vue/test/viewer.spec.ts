@@ -134,8 +134,9 @@ vi.mock("@orbidicom/core", () => {
       provenance: {},
       results: [],
     })),
-    applyResultSet: vi.fn(async () => [] as string[]),
+    applyResultSet: vi.fn(async () => ({ annotationUids: [], segmentationIds: [] })),
     removeApplied: vi.fn(),
+    removeAppliedSegmentations: vi.fn(async () => {}),
     exportAccepted: vi.fn(() => "{}"),
     TOOLS: {
       WindowLevel: "WindowLevel",

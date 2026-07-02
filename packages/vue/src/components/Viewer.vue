@@ -285,6 +285,7 @@ import {
   importResults,
   applyResultSet,
   removeApplied,
+  removeAppliedSegmentations,
   exportAccepted,
 } from "@orbidicom/core";
 import type {
@@ -607,9 +608,13 @@ async function toggleSegmentation(seg: SegmentationInstance) {
 const aiResultsEnabled = computed(() => props.features?.aiResults === true);
 const aiPanelOpen = ref(false);
 const aiResultSet = ref<AIResultSet | null>(null);
-// UIDs of the annotations the last apply added — removed before every re-apply so
-// accept/reject/toggle re-derive the on-screen state from the (mutated) set.
-let aiAppliedUids: string[] = [];
+// Handles (annotation UIDs + segmentation ids) the last apply added — removed
+// before every re-apply so accept/reject/toggle re-derive the on-screen state
+// from the (mutated) set, instead of leaking duplicate/stale representations.
+let aiApplied: { annotationUids: string[]; segmentationIds: string[] } = {
+  annotationUids: [],
+  segmentationIds: [],
+};
 
 // Build the apply context from the SAME active-cell state the segmentation path
 // uses: the live viewport's id (getViewport().id — as AnnotationOverlay reads it)
@@ -635,10 +640,12 @@ async function buildAiCtx(): Promise<{
 // then add back the accepted + visible ones. Keeps the viewport in sync after any
 // accept/reject/visibility change without tracking per-result annotation identity.
 async function reapplyAi() {
-  removeApplied(aiAppliedUids);
-  aiAppliedUids = aiResultSet.value
-    ? await applyResultSet(aiResultSet.value, await buildAiCtx())
-    : [];
+  const ctx = await buildAiCtx();
+  removeApplied(aiApplied.annotationUids);
+  await removeAppliedSegmentations(ctx.viewportId, aiApplied.segmentationIds);
+  aiApplied = aiResultSet.value
+    ? await applyResultSet(aiResultSet.value, ctx)
+    : { annotationUids: [], segmentationIds: [] };
 }
 async function onAiImport(file: File) {
   aiResultSet.value = importResults(await file.text());

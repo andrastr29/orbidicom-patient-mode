@@ -14,7 +14,10 @@ vi.mock("@cornerstonejs/tools", () => ({
   },
   utilities: { triggerAnnotationRenderForViewportIds: vi.fn() },
 }));
-vi.mock("../src/cornerstone/seg", () => ({ renderSegmentation: vi.fn(async () => true) }));
+vi.mock("../src/cornerstone/seg", () => ({
+  renderSegmentation: vi.fn(async () => true),
+  removeSegmentationFromViewport: vi.fn(),
+}));
 
 import { applyResultSet } from "../src/ai/apply";
 import type { AIResultSet } from "../src/ai/types";
@@ -70,8 +73,27 @@ beforeEach(() => {
 
 describe("applyResultSet", () => {
   it("adds only accepted+visible measurements and triggers a render", async () => {
-    const uids = await applyResultSet(set, { viewportId: "vp1", stack: [] });
-    expect(uids).toEqual(["ann-1"]);
+    const result = await applyResultSet(set, { viewportId: "vp1", stack: [] });
+    expect(result.annotationUids).toEqual(["ann-1"]);
     expect(added).toHaveLength(1);
+  });
+
+  it("returns a segmentationIds entry for an accepted+visible segmentation result", async () => {
+    const setWithSeg: AIResultSet = {
+      ...set,
+      results: [
+        ...set.results,
+        {
+          kind: "segmentation",
+          id: "r-3",
+          label: "seg",
+          reviewStatus: "accepted",
+          visible: true,
+          segmentation: { info: { segments: [] }, labelmaps: [] } as never,
+        },
+      ],
+    };
+    const result = await applyResultSet(setWithSeg, { viewportId: "vp1", stack: [] });
+    expect(result.segmentationIds).toEqual(["orbidicom-ai-r-3"]);
   });
 });
