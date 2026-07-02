@@ -17,6 +17,7 @@
       :can-upload-sr="canUploadSr"
       :can-mpr="canMpr"
       :mpr-active="layoutMode === 'mpr'"
+      :can-ai-results="aiResultsEnabled"
       @preset="applyPreset"
       @tool="selectTool"
       @invert="onActive((s) => s.invert())"
@@ -36,6 +37,7 @@
       @download-study="onDownloadStudy"
       @download-image="onDownloadImage"
       @export-measurements="onExportMeasurements"
+      @open-ai-results="aiPanelOpen = !aiPanelOpen"
     />
 
     <div class="content">
@@ -190,6 +192,19 @@
           >
         </div>
       </div>
+
+      <!-- AI & Results right dock: imports an AIResultSet and applies its
+           accepted/visible results to the active cell. Gated by features.aiResults
+           (the panel + toolbar button don't exist unless the deployment enables it). -->
+      <AiResultsPanel
+        v-if="aiResultsEnabled && aiPanelOpen"
+        :result-set="aiResultSet"
+        @import-file="onAiImport"
+        @accept="onAiAccept"
+        @reject="onAiReject"
+        @toggle="onAiToggle"
+        @export="onAiExport"
+      />
     </div>
 
     <MetaPanel :open="metaPanelOpen" :groups="metaGroups" @close="metaPanelOpen = false" />
@@ -240,6 +255,7 @@ import MetaPanel from "./MetaPanel.vue";
 import PdfView from "./PdfView.vue";
 import SrView from "./SrView.vue";
 import AnnotationOverlay from "./AnnotationOverlay.vue";
+import AiResultsPanel from "./AiResultsPanel.vue";
 import {
   initCornerstone,
   setPrimaryTool,
@@ -266,6 +282,10 @@ import {
   VR_PRESETS,
   defaultVrPreset,
   applyHangingProtocol,
+  importResults,
+  applyResultSet,
+  removeApplied,
+  exportAccepted,
 } from "@orbidicom/core";
 import type {
   StackHandle,
@@ -281,6 +301,7 @@ import type {
   HangingProtocolName,
   KeyImage,
   SegmentationInstance,
+  AIResultSet,
 } from "@orbidicom/core";
 import { t, dir, getLang } from "../i18n";
 
@@ -314,6 +335,8 @@ const props = defineProps<{
    * many cells open and which series fills each.
    */
   hangingProtocol?: HangingProtocolName | HangingProtocol;
+  /** Per-deployment feature toggles (from runtime config). */
+  features?: { aiResults?: boolean };
 }>();
 const series = ref<SeriesSummary[]>([]);
 const cellCount = ref(1);
@@ -573,6 +596,80 @@ async function toggleSegmentation(seg: SegmentationInstance) {
   } catch {
     /* leave the toggle off — a real failure surfaces in the console/network tab */
   }
+}
+
+// --- AI & Results (Phase 1) -------------------------------------------------
+// A right-dock panel imports an AIResultSet (JSON) and applies its accepted +
+// visible results to the active cell: measurements become real Cornerstone
+// annotations, segmentations render as labelmap overlays. Gated by the
+// features.aiResults deployment toggle; the panel and toolbar button only exist
+// when it's on.
+const aiResultsEnabled = computed(() => props.features?.aiResults === true);
+const aiPanelOpen = ref(false);
+const aiResultSet = ref<AIResultSet | null>(null);
+// UIDs of the annotations the last apply added — removed before every re-apply so
+// accept/reject/toggle re-derive the on-screen state from the (mutated) set.
+let aiAppliedUids: string[] = [];
+
+// Build the apply context from the SAME active-cell state the segmentation path
+// uses: the live viewport's id (getViewport().id — as AnnotationOverlay reads it)
+// and the active cell's image ids, each paired with its SOP Instance UID (needed
+// to align imported SEG labelmaps to the right slices — see seg/align.ts).
+async function buildAiCtx(): Promise<{
+  viewportId: string;
+  stack: { imageId: string; sopInstanceUID: string }[];
+}> {
+  const i = activeCell.value;
+  const viewportId = stacks[i]?.getViewport()?.id ?? "";
+  const ids = cellImageIds[i] ?? [];
+  const stack = await Promise.all(
+    ids.map(async (imageId) => ({
+      imageId,
+      sopInstanceUID: (await readImageMetadata(imageId)).sopInstanceUID ?? "",
+    })),
+  );
+  return { viewportId, stack };
+}
+
+// Re-apply the current set from scratch: drop the previously-injected annotations,
+// then add back the accepted + visible ones. Keeps the viewport in sync after any
+// accept/reject/visibility change without tracking per-result annotation identity.
+async function reapplyAi() {
+  removeApplied(aiAppliedUids);
+  aiAppliedUids = aiResultSet.value
+    ? await applyResultSet(aiResultSet.value, await buildAiCtx())
+    : [];
+}
+async function onAiImport(file: File) {
+  aiResultSet.value = importResults(await file.text());
+  await reapplyAi();
+}
+function onAiReject(id: string) {
+  const r = aiResultSet.value?.results.find((x) => x.id === id);
+  if (r) {
+    r.reviewStatus = "rejected";
+    void reapplyAi();
+  }
+}
+function onAiAccept(id: string) {
+  const r = aiResultSet.value?.results.find((x) => x.id === id);
+  if (r) {
+    r.reviewStatus = "accepted";
+    void reapplyAi();
+  }
+}
+function onAiToggle(id: string) {
+  const r = aiResultSet.value?.results.find((x) => x.id === id);
+  if (r) {
+    r.visible = !r.visible;
+    void reapplyAi();
+  }
+}
+function onAiExport(format: "json" | "csv" | "ai-json") {
+  if (!aiResultSet.value) return;
+  const text = exportAccepted(aiResultSet.value, format);
+  const blob = new Blob([text], { type: format === "csv" ? "text/csv" : "application/json" });
+  triggerBlobDownload(blob, `orbidicom-ai.${format === "csv" ? "csv" : "json"}`);
 }
 
 async function doUploadSr() {

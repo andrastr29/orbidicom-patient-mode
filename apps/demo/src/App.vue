@@ -213,7 +213,7 @@ function onDragLeave(e: DragEvent) {
 
 <template>
   <template v-if="source">
-    <Viewer :source="source" :study-uids="studyUids" title="OrbiDICOM">
+    <Viewer :source="source" :study-uids="studyUids" :features="cfg.features" title="OrbiDICOM">
       <template #actions>
         <button
           class="newstudy"

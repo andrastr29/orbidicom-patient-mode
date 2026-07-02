@@ -10,6 +10,8 @@ export type MetaGet = (module: string, imageId: string) => unknown;
 export interface ImageMetadata {
   patientName?: string;
   patientId?: string;
+  /** SOP Instance UID of this image — used to align per-slice overlays (e.g. SEG). */
+  sopInstanceUID?: string;
   patientSex?: string;
   patientBirthDate?: string;
   studyDescription?: string;
@@ -112,6 +114,7 @@ export async function readImageMetadata(imageId: string, get?: MetaGet): Promise
   const image = asDict(g("generalImageModule", imageId));
   const pixel = asDict(g("imagePixelModule", imageId));
   const plane = asDict(g("imagePlaneModule", imageId));
+  const sop = asDict(g("sopCommonModule", imageId));
 
   const spacing = plane.pixelSpacing;
   const pixelSpacing =
@@ -123,6 +126,7 @@ export async function readImageMetadata(imageId: string, get?: MetaGet): Promise
     patientName: personName(patient.patientName),
     // wadors -> patientId, wadouri -> patientID.
     patientId: str(patient.patientId ?? patient.patientID),
+    sopInstanceUID: str(sop.sopInstanceUID),
     patientSex: str(patient.patientSex ?? patientStudy.patientSex),
     patientBirthDate: dicomDate(patient.patientBirthDate),
     studyDescription: str(study.studyDescription),
