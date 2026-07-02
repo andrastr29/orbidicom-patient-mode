@@ -75,6 +75,7 @@ export function isAIResultSet(x: unknown): x is AIResultSet {
   if (typeof o.provenance !== "object" || o.provenance === null) return false;
   if (!Array.isArray(o.results)) return false;
   return o.results.every(
-    (r) => typeof r === "object" && r !== null && KINDS.has((r as { kind?: unknown }).kind as string),
+    (r) =>
+      typeof r === "object" && r !== null && KINDS.has((r as { kind?: unknown }).kind as string),
   );
 }

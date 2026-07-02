@@ -5,7 +5,14 @@ const valid: AIResultSet = {
   schema: "orbidicom.ai-results/v1",
   provenance: { source: "import", format: "ai-json" },
   results: [
-    { kind: "finding", id: "f1", label: "Impression", reviewStatus: "pending", visible: true, text: "hello" },
+    {
+      kind: "finding",
+      id: "f1",
+      label: "Impression",
+      reviewStatus: "pending",
+      visible: true,
+      text: "hello",
+    },
   ],
 };
 

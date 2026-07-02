@@ -19,8 +19,6 @@ const data: SegmentationData = {
 describe("computeSegmentStats", () => {
   it("counts voxels per segment and derives volume/area", () => {
     const stats = computeSegmentStats(data, { rowMm: 1, colMm: 1, sliceMm: 2 });
-    expect(stats).toEqual([
-      { segment: 1, label: "Tumor", voxels: 3, areaMm2: 3, volumeMm3: 6 },
-    ]);
+    expect(stats).toEqual([{ segment: 1, label: "Tumor", voxels: 3, areaMm2: 3, volumeMm3: 6 }]);
   });
 });
