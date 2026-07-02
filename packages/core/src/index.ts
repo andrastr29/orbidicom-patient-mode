@@ -24,6 +24,7 @@ export * from "./seg/parse";
 export * from "./seg/decode";
 export * from "./sr/to-json";
 export * from "./ai/types";
+export * from "./ai/stats";
 // Side-effect import: registers the built-in adapters into the data-source
 // factory registry (keep last so the source modules above are initialized).
 import "./datasources/builtins";
