@@ -758,6 +758,13 @@ async function loadIntoCell(i: number, si: number) {
   clearPdf(i);
   cellImageIds[i] = imageIds;
   sliceCount[i] = imageIds.length;
+  // The series-list count is a pre-fetch estimate (e.g. QIDO instance count),
+  // which under-reports multi-frame series where one instance yields many frames
+  // (PET/CT, NM, cine). Now that the frames are resolved, reconcile the rail count
+  // to what actually loaded. Image series only — leave report/PDF series (0 images).
+  if (imageIds.length && s.numberOfFrames !== imageIds.length) {
+    s.numberOfFrames = imageIds.length;
+  }
   sliceIndex[i] = 0;
   imageVersion.value++; // cellImageIds is non-reactive; signal current-image consumers
 

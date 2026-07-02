@@ -231,7 +231,33 @@ const pdfSource = {
   getPdfObjectUrl: vi.fn(async () => "blob:report"),
 };
 
+// A source whose series summary under-counts images: getSeries reports the QIDO
+// instance count (1 multi-frame instance) while getImageIds expands it to 5
+// frames. Mirrors DicomWebDataSource on a multi-frame PET/CT series.
+const multiFrameSource = {
+  capabilities: { downloadArchive: false, encapsulatedPdf: false, multiStudy: false },
+  getSeries: vi.fn(async () => [
+    {
+      seriesInstanceUID: "PT1",
+      studyInstanceUID: "ST",
+      modality: "PT",
+      seriesDescription: "PET WB",
+      numberOfFrames: 1, // instance count from QIDO, not frames
+    },
+  ]),
+  getImageIds: vi.fn(async () => Array.from({ length: 5 }, (_, i) => `wadors:${i + 1}`)),
+};
+
 describe("Viewer", () => {
+  it("reconciles the rail image count to the frames actually loaded (multi-frame series)", async () => {
+    const w = mount(Viewer, { props: { source: multiFrameSource as never, studyUids: ["ST"] } });
+    await flushPromises();
+    // Rail must reflect the 5 loaded frames, not the QIDO instance count of 1.
+    const rail = w.find(".rail__item").text();
+    expect(rail).toContain("5 img");
+    expect(rail).not.toContain("1 img");
+  });
+
   it("loads series from the data source on mount and renders the rail + first stack", async () => {
     const w = mount(Viewer, { props: { source: source as never, studyUids: ["ST"] } });
     await flushPromises();

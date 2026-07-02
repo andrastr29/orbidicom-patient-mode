@@ -83,6 +83,40 @@ describe("LocalDataSource", () => {
     expect(await ds.getImageIds(series[1])).toEqual(["dicomfile:2"]);
   });
 
+  it("expands multi-frame instances into per-frame imageIds and counts frames, not files", async () => {
+    // A single multi-frame PET object (one file, three frames) — the DICOMweb path
+    // already expands these; the local path must too, or frames 2..N are lost.
+    const multi: Record<string, LocalTags> = {
+      "pet.dcm": {
+        seriesInstanceUID: "PT1",
+        seriesNumber: 3,
+        modality: "PT",
+        seriesDescription: "PET WB",
+        sopInstanceUID: "pt1",
+        instanceNumber: 1,
+        numberOfFrames: 3,
+      },
+    };
+    const parse = async (f: File): Promise<LocalTags> => {
+      const t = multi[f.name];
+      if (!t) throw new Error("not a DICOM file");
+      return t;
+    };
+    const ds = new LocalDataSource({ parseFile: parse, addFile: () => "dicomfile:7" });
+    const added = await ds.addFiles([file("pet.dcm")]);
+    expect(added).toBe(1); // one instance ingested...
+
+    const series = await ds.getSeries([]);
+    expect(series[0].numberOfFrames).toBe(3); // ...but three renderable frames
+
+    // wadouri addresses frames with a 1-based ?frame=N query param.
+    expect(await ds.getImageIds(series[0])).toEqual([
+      "dicomfile:7?frame=1",
+      "dicomfile:7?frame=2",
+      "dicomfile:7?frame=3",
+    ]);
+  });
+
   it("drops non-renderable modalities (SR/PR/KO/PLAN)", async () => {
     const ds = new LocalDataSource({ parseFile, addFile: () => "dicomfile:x" });
     const added = await ds.addFiles([file("a.dcm"), file("report.dcm")]);

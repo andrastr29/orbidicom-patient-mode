@@ -23,6 +23,11 @@ export interface LocalTags {
   seriesDescription: string;
   sopInstanceUID: string;
   instanceNumber: number;
+  /** NumberOfFrames (0028,0008) — how many frames this one instance carries.
+   *  Multi-frame objects (Enhanced PET/CT, NM, cine) pack every slice into a
+   *  single file; each frame is a separately-addressable image. Absent/≤1 means a
+   *  classic single-frame instance. */
+  numberOfFrames?: number;
   /** Whether the instance has PixelData (7FE0,0010). Instances without it
    *  (DICOMDIR, presentation states, structured reports, etc.) aren't renderable
    *  and are skipped so they can't form a phantom series that hangs on select.
@@ -38,6 +43,8 @@ export interface LocalTags {
 interface LocalInstance {
   imageId: string;
   instanceNumber: number;
+  /** Frames in this instance (≥1). >1 means it's expanded into per-frame imageIds. */
+  frames: number;
 }
 
 interface LocalReport {
@@ -130,7 +137,11 @@ export class LocalDataSource implements DataSource {
       if (t.sopInstanceUID && this.seenSops.has(t.sopInstanceUID)) continue;
       const imageId = await this.addFile(file);
       if (t.sopInstanceUID) this.seenSops.add(t.sopInstanceUID);
-      this.entryFor(t).instances.push({ imageId, instanceNumber: t.instanceNumber });
+      this.entryFor(t).instances.push({
+        imageId,
+        instanceNumber: t.instanceNumber,
+        frames: Math.max(1, t.numberOfFrames ?? 1),
+      });
       added++;
     }
     return added;
@@ -159,7 +170,11 @@ export class LocalDataSource implements DataSource {
   async getSeries(_studyUids: string[]): Promise<SeriesSummary[]> {
     return [...this.series.values()]
       .sort((a, b) => a.seriesNumber - b.seriesNumber)
-      .map((e) => ({ ...e.summary, numberOfFrames: e.instances.length }));
+      .map((e) => ({
+        ...e.summary,
+        // Count renderable frames, not files: a multi-frame instance is many images.
+        numberOfFrames: e.instances.reduce((n, i) => n + i.frames, 0),
+      }));
   }
 
   async getImageIds(series: SeriesSummary): Promise<string[]> {
@@ -168,7 +183,7 @@ export class LocalDataSource implements DataSource {
     return entry.instances
       .slice()
       .sort((a, b) => a.instanceNumber - b.instanceNumber)
-      .map((i) => i.imageId);
+      .flatMap((i) => framesToImageIds(i.imageId, i.frames));
   }
 
   /** @deprecated use {@link listReports}. Encapsulated PDFs ingested for this series. */
@@ -221,6 +236,15 @@ export class LocalDataSource implements DataSource {
       throw new Error(`LocalDataSource: no SR for SOP ${report.sopUid}`);
     return found.payload.tree;
   }
+}
+
+/** Expand a wadouri file imageId into one imageId per frame.
+ *  Single-frame instances keep their bare imageId (unchanged legacy behavior);
+ *  multi-frame instances get a 1-based `?frame=N` query param, which the wadouri
+ *  loader maps to pixelDataFrame N-1. */
+function framesToImageIds(imageId: string, frames: number): string[] {
+  if (frames <= 1) return [imageId];
+  return Array.from({ length: frames }, (_v, i) => `${imageId}?frame=${i + 1}`);
 }
 
 // --- default wiring to Cornerstone / dicom-parser ----------------------------
@@ -294,6 +318,9 @@ async function defaultParseFile(file: File): Promise<LocalTags> {
     seriesDescription: ds.string("x0008103e") || "",
     sopInstanceUID: ds.string("x00080018") || "",
     instanceNumber: Number(ds.string("x00200013")) || 0,
+    // NumberOfFrames (0028,0008): multi-frame objects (Enhanced PET/CT, NM, cine)
+    // pack every slice into one file. Absent → single-frame.
+    numberOfFrames: Number(ds.string("x00280008")) || 1,
     // PixelData (7FE0,0010) present → a renderable image. Absent → DICOMDIR,
     // presentation state, structured report, etc. — skipped by addFiles.
     hasPixelData: ds.elements?.["x7fe00010"] !== undefined,

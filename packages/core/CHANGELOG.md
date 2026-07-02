@@ -1,5 +1,27 @@
 # @orbidicom/core
 
+## 0.10.0
+
+### Minor Changes
+
+- [#9](https://github.com/docorbitapp/orbidicom/pull/9) [`4270f92`](https://github.com/docorbitapp/orbidicom/commit/4270f9297b2dd4bbd46b6d1f0c48de303b24d529) Thanks [@gasci](https://github.com/gasci)! - Add the **AI & Results** right-dock panel (`AiResultsPanel`) to the Vue viewer, gated by the `features.aiResults` deployment toggle. It imports an `AIResultSet` (JSON), lists results grouped by kind (segmentations / measurements / findings) with accept / reject / visibility toggles, applies the accepted + visible results to the active cell (measurements as Cornerstone annotations, segmentations as labelmap overlays), and exports the accepted set as JSON / CSV / ai-json. A toolbar button opens the panel when the feature is enabled; the demo passes `features` through from its runtime config. Core's `readImageMetadata` / `ImageMetadata` now also expose `sopInstanceUID`, used to align imported SEG labelmaps to the active stack's slices. The panel is responsive (stacks full-width below the viewport on phones, with larger touch targets) and honours custom themes via the standard CSS variables.
+
+### Patch Changes
+
+- Fix multi-frame image counting for PET/CT (and NM/cine/Enhanced objects).
+
+  `LocalDataSource` now reads `NumberOfFrames` (0028,0008) and expands each
+  multi-frame instance into per-frame wadouri imageIds (`?frame=N`, 1-based),
+  matching the DICOMweb path. Previously a multi-frame local file rendered only its
+  first frame and counted as a single image — the remaining frames were silently
+  dropped. Its series `numberOfFrames` now sums frames across instances rather than
+  counting files.
+
+  The Vue viewer also reconciles the series-rail image count to the number of frames
+  actually loaded, so a multi-frame series whose pre-fetch estimate (e.g. a QIDO
+  instance count) under-reports frames no longer shows a count that disagrees with
+  the scrollable stack.
+
 ## 0.9.1
 
 ## 0.9.0
