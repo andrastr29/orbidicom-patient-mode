@@ -14,7 +14,10 @@ const doc = {
       imageId: "img1",
       frameOfReferenceUID: "FOR1",
       stats: [{ target: "imageId:img1", name: "length", value: 42.5, unit: "mm" }],
-      points: [[0, 0, 0], [42.5, 0, 0]],
+      points: [
+        [0, 0, 0],
+        [42.5, 0, 0],
+      ],
     },
   ],
 };
@@ -29,9 +32,30 @@ describe("fromOrbidicomJson", () => {
     expect(r.id).toBe("ann-1");
     expect(r.reviewStatus).toBe("accepted");
     expect(r.visible).toBe(true);
-    if (r.kind === "measurement") expect(r.measurement.points).toEqual([[0, 0, 0], [42.5, 0, 0]]);
+    if (r.kind === "measurement")
+      expect(r.measurement.points).toEqual([
+        [0, 0, 0],
+        [42.5, 0, 0],
+      ]);
   });
   it("throws ImportError on wrong schema", () => {
     expect(() => fromOrbidicomJson({ schema: "nope" })).toThrow(ImportError);
+  });
+
+  it("throws ImportError (all-or-nothing) when any measurement is malformed", () => {
+    const bad = {
+      ...doc,
+      measurements: [
+        doc.measurements[0],
+        // missing frameOfReferenceUID + non-triple points
+        { tool: "Length", imageId: "img2", points: [[0, 0]], stats: [] },
+      ],
+    };
+    expect(() => fromOrbidicomJson(bad)).toThrow(ImportError);
+    expect(() => fromOrbidicomJson(bad)).toThrow(/invalid measurement at index 1/);
+  });
+
+  it("throws ImportError when a measurement is not an object", () => {
+    expect(() => fromOrbidicomJson({ ...doc, measurements: ["nope"] })).toThrow(ImportError);
   });
 });

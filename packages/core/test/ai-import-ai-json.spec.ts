@@ -35,4 +35,60 @@ describe("fromAiJson", () => {
   it("throws ImportError on invalid input", () => {
     expect(() => fromAiJson({ schema: "nope" })).toThrow(ImportError);
   });
+
+  it("throws ImportError when a measurement result is missing its measurement", () => {
+    const bad = {
+      ...doc,
+      results: [
+        { kind: "measurement", id: "m1", label: "L", reviewStatus: "pending", visible: true },
+      ],
+    };
+    expect(() => fromAiJson(bad)).toThrow(ImportError);
+    expect(() => fromAiJson(bad)).toThrow(/missing a measurement object/);
+  });
+
+  it("throws ImportError when a measurement has non-numeric points", () => {
+    const bad = {
+      ...doc,
+      results: [
+        {
+          kind: "measurement",
+          id: "m2",
+          label: "L",
+          reviewStatus: "pending",
+          visible: true,
+          measurement: { points: [["a", "b", "c"]], stats: [] },
+        },
+      ],
+    };
+    expect(() => fromAiJson(bad)).toThrow(/invalid measurement.points/);
+  });
+
+  it("throws ImportError when a segmentation result is missing its segmentation", () => {
+    const bad = {
+      ...doc,
+      results: [
+        { kind: "segmentation", id: "s1", label: "S", reviewStatus: "accepted", visible: true },
+      ],
+    };
+    expect(() => fromAiJson(bad)).toThrow(ImportError);
+    expect(() => fromAiJson(bad)).toThrow(/missing a segmentation object/);
+  });
+
+  it("throws ImportError when a segmentation is missing labelmaps", () => {
+    const bad = {
+      ...doc,
+      results: [
+        {
+          kind: "segmentation",
+          id: "s2",
+          label: "S",
+          reviewStatus: "accepted",
+          visible: true,
+          segmentation: { info: { segments: [] } },
+        },
+      ],
+    };
+    expect(() => fromAiJson(bad)).toThrow(/invalid segmentation.labelmaps/);
+  });
 });

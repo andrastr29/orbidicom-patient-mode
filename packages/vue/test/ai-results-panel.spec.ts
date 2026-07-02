@@ -55,4 +55,15 @@ describe("AiResultsPanel", () => {
     await w.get('[data-test="export-json"]').trigger("click");
     expect(w.emitted("export")?.[0]).toEqual(["json"]);
   });
+  it("renders the error prop when set, and nothing when absent", () => {
+    const withErr = mount(AiResultsPanel, {
+      props: { resultSet: null, error: "Import payload is not valid JSON" },
+    });
+    expect(withErr.find('[data-test="import-error"]').exists()).toBe(true);
+    expect(withErr.get('[data-test="import-error"]').text()).toContain(
+      "Import payload is not valid JSON",
+    );
+    const noErr = mount(AiResultsPanel, { props: { resultSet, error: null } });
+    expect(noErr.find('[data-test="import-error"]').exists()).toBe(false);
+  });
 });
