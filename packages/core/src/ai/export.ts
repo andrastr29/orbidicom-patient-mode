@@ -4,6 +4,7 @@ import {
   type Measurement,
 } from "../cornerstone/measurements";
 import type { AIResultSet } from "./types";
+import { encodeU8 } from "./u8-codec";
 
 const isAccepted = (status: string) => status === "accepted";
 
@@ -32,5 +33,7 @@ export function exportAccepted(
     ...set,
     results: set.results.filter((r) => isAccepted(r.reviewStatus)),
   };
-  return JSON.stringify(filtered, null, 2);
+  // Encode Uint8Array fields (segmentation.labelmaps[].data, sourceBytes) as a
+  // tagged `{ "$u8": base64 }` form so they survive JSON round-trips losslessly.
+  return JSON.stringify(encodeU8(filtered), null, 2);
 }

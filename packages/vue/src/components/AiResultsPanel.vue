@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import type { AIResultSet, AIResult } from "@orbidicom/core";
 
-const props = defineProps<{ resultSet: AIResultSet | null }>();
+const props = defineProps<{ resultSet: AIResultSet | null; error?: string | null }>();
 const emit = defineEmits<{
   accept: [string];
   reject: [string];
@@ -34,7 +34,11 @@ function statLine(r: AIResult): string {
 }
 
 function onImport(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0];
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  // Reset the input so re-selecting the same file re-fires `change` (needed to
+  // retry after a failed import).
+  input.value = "";
   if (file) emit("importFile", file);
 }
 </script>
@@ -47,6 +51,8 @@ function onImport(e: Event) {
         <input type="file" accept=".json,application/json" hidden @change="onImport" />⤓
       </label>
     </header>
+
+    <p v-if="error" class="aipanel__error" data-test="import-error" role="alert">{{ error }}</p>
 
     <div v-if="resultSet" class="aipanel__prov">
       <span class="aipanel__badge">{{
@@ -121,6 +127,14 @@ function onImport(e: Event) {
 .aipanel__import {
   margin-left: auto;
   cursor: pointer;
+}
+.aipanel__error {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--od-danger, #f87171);
+  background: rgba(248, 113, 113, 0.12);
+  border-bottom: 1px solid var(--od-border, #232a36);
 }
 .aipanel__prov {
   padding: 7px 12px;
