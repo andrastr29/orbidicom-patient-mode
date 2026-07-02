@@ -51,3 +51,12 @@ describe("configScript", () => {
     expect(js).not.toMatch(/[\r\n]\s*alert/);
   });
 });
+
+describe("configScript features", () => {
+  it("emits features.aiResults when --ai was set", () => {
+    expect(configScript({ ai: true })).toContain("features: { aiResults: true }");
+  });
+  it("omits features when not set", () => {
+    expect(configScript({})).not.toContain("features");
+  });
+});

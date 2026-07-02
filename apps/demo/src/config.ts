@@ -22,6 +22,8 @@ export interface RuntimeConfig {
    * client-readable config — only for trusted/internal deployments.
    */
   auth?: AuthStrategy;
+  /** Optional per-deployment feature toggles. */
+  features?: { aiResults?: boolean };
 }
 
 declare global {
@@ -44,10 +46,14 @@ export function mergeConfig(base: RuntimeConfig, search: string): RuntimeConfig 
   };
   // Auth comes from the base config ONLY — never a query param — so a crafted
   // link can't inject or downgrade credentials.
+  const aiParam = params.get("ai");
+  const aiResults =
+    aiParam != null ? aiParam === "1" || aiParam === "true" : (base.features?.aiResults ?? false);
   return {
     pacsUrl: pick("pacs", base.pacsUrl),
     studyUid: pick("study", base.studyUid),
     auth: base.auth,
+    features: { aiResults },
   };
 }
 

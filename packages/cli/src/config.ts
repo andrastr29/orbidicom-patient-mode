@@ -14,6 +14,8 @@ export interface ConfigOptions {
   token?: string;
   username?: string;
   password?: string;
+  /** Enable the in-app AI & Results panel (features.aiResults). */
+  ai?: boolean;
 }
 
 /** Serialize the auth strategy as a JS object literal, or "" for none/default. */
@@ -38,5 +40,6 @@ function authLiteral(opts: ConfigOptions): string {
 export function configScript(opts: ConfigOptions): string {
   const pacsUrl = sanitize(opts.pacs ?? "");
   const studyUid = sanitize(opts.study ?? "");
-  return `window.__ORBIDICOM_CONFIG__ = {\n  pacsUrl: "${pacsUrl}",\n  studyUid: "${studyUid}",${authLiteral(opts)}\n};\n`;
+  const featuresLiteral = opts.ai ? `\n  features: { aiResults: true },` : "";
+  return `window.__ORBIDICOM_CONFIG__ = {\n  pacsUrl: "${pacsUrl}",\n  studyUid: "${studyUid}",${authLiteral(opts)}${featuresLiteral}\n};\n`;
 }
