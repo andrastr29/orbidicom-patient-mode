@@ -108,9 +108,11 @@ function onImport(e: Event) {
   display: flex;
   flex-direction: column;
   width: 320px;
-  border-left: 1px solid var(--od-border, #232a36);
-  background: var(--od-panel, #12151c);
-  color: var(--od-text, #c7cedb);
+  /* Logical property so the dock's border sits on the edge adjacent to the
+     stage in both LTR and RTL layouts (the viewer flips via :dir). */
+  border-inline-start: 1px solid var(--border, #232a36);
+  background: var(--panel, #12151c);
+  color: var(--text, #c7cedb);
   overflow-y: auto;
 }
 .aipanel__head,
@@ -122,7 +124,7 @@ function onImport(e: Event) {
 }
 .aipanel__head {
   font-weight: 600;
-  border-bottom: 1px solid var(--od-border, #232a36);
+  border-bottom: 1px solid var(--border, #232a36);
 }
 .aipanel__import {
   margin-left: auto;
@@ -132,9 +134,9 @@ function onImport(e: Event) {
   margin: 0;
   padding: 8px 12px;
   font-size: 11px;
-  color: var(--od-danger, #f87171);
+  color: var(--danger, #f87171);
   background: rgba(248, 113, 113, 0.12);
-  border-bottom: 1px solid var(--od-border, #232a36);
+  border-bottom: 1px solid var(--border, #232a36);
 }
 .aipanel__prov {
   padding: 7px 12px;
@@ -172,6 +174,13 @@ function onImport(e: Event) {
 }
 .aipanel__name {
   font-weight: 600;
+  /* Truncate long AI labels instead of letting them overflow the row (which on
+     narrow/mobile widths would force a horizontal scroll). */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .aipanel__stat {
   font-size: 11px;
@@ -183,7 +192,7 @@ function onImport(e: Event) {
   gap: 4px;
 }
 .aipanel__foot {
-  border-top: 1px solid var(--od-border, #232a36);
+  border-top: 1px solid var(--border, #232a36);
 }
 .aipanel__eye,
 .aipanel__ok,
@@ -193,5 +202,37 @@ function onImport(e: Event) {
   background: none;
   border: none;
   color: inherit;
+}
+
+/* Mobile: `.content` becomes a column (see Viewer.vue @640px), so the right
+   dock stacks below the stage. Fill the width, swap the side border for a top
+   one, and cap the height so the image keeps most of the viewport (the panel
+   scrolls internally). Matches how the series rail / grids stack on phones. */
+@media (max-width: 640px) {
+  .aipanel {
+    width: 100%;
+    border-inline-start: 0;
+    border-top: 1px solid var(--border, #232a36);
+    max-height: 50vh;
+  }
+}
+
+/* Touch devices: enlarge the review/visibility hit targets so they clear the
+   ~44px tap-target guideline regardless of viewport. The panel rows are
+   `align-items: center` with no fixed height, so taller targets just grow the
+   row. */
+@media (pointer: coarse) {
+  .aipanel__eye,
+  .aipanel__ok,
+  .aipanel__no {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .aipanel__import {
+    padding: 6px 10px;
+  }
+  .aipanel__foot button {
+    padding: 8px 12px;
+  }
 }
 </style>
