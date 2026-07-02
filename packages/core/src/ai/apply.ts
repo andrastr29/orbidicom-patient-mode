@@ -1,5 +1,5 @@
 import { annotation, utilities } from "@cornerstonejs/tools";
-import { removeSegmentationFromViewport, renderSegmentation } from "../cornerstone/seg";
+import { removeAiSegmentation, renderSegmentation } from "../cornerstone/seg";
 import { measurementToAnnotation } from "./measurement-to-annotation";
 import type { AIResultSet } from "./types";
 
@@ -57,10 +57,13 @@ export function removeApplied(uids: string[]): void {
   for (const uid of uids) annotation.state.removeAnnotation(uid);
 }
 
-/** Remove previously-applied segmentation labelmaps by id (e.g. on reject / re-apply). */
-export async function removeAppliedSegmentations(
-  viewportId: string,
-  segmentationIds: string[],
-): Promise<void> {
-  for (const id of segmentationIds) removeSegmentationFromViewport(viewportId, id);
+/**
+ * Fully deregister previously-applied AI segmentations by id (e.g. on reject /
+ * re-apply). Removes each segmentation's global state entry AND all of its
+ * viewport representations, so the deterministic `aiSegmentationId` is free to be
+ * re-added on the next apply (a plain per-viewport representation removal would
+ * leave the state entry and make the next `addSegmentations` throw).
+ */
+export function removeAppliedSegmentations(segmentationIds: string[]): void {
+  for (const id of segmentationIds) removeAiSegmentation(id);
 }

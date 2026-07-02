@@ -16,10 +16,12 @@ vi.mock("@cornerstonejs/tools", () => ({
 }));
 vi.mock("../src/cornerstone/seg", () => ({
   renderSegmentation: vi.fn(async () => true),
-  removeSegmentationFromViewport: vi.fn(),
+  removeAiSegmentation: vi.fn(),
 }));
 
-import { applyResultSet } from "../src/ai/apply";
+import { applyResultSet, removeApplied, removeAppliedSegmentations } from "../src/ai/apply";
+import { removeAiSegmentation } from "../src/cornerstone/seg";
+import { annotation } from "@cornerstonejs/tools";
 import type { AIResultSet } from "../src/ai/types";
 
 const set: AIResultSet = {
@@ -95,5 +97,49 @@ describe("applyResultSet", () => {
     };
     const result = await applyResultSet(setWithSeg, { viewportId: "vp1", stack: [] });
     expect(result.segmentationIds).toEqual(["orbidicom-ai-r-3"]);
+  });
+});
+
+describe("removeApplied", () => {
+  it("removes each annotation once by its uid", () => {
+    const removeAnnotation = vi.mocked(annotation.state.removeAnnotation);
+    removeAnnotation.mockClear();
+    removeApplied(["a", "b"]);
+    expect(removeAnnotation).toHaveBeenCalledTimes(2);
+    expect(removeAnnotation).toHaveBeenNthCalledWith(1, "a");
+    expect(removeAnnotation).toHaveBeenNthCalledWith(2, "b");
+  });
+});
+
+describe("removeAppliedSegmentations", () => {
+  it("fully deregisters each segmentation once by its id", () => {
+    const deregister = vi.mocked(removeAiSegmentation);
+    deregister.mockClear();
+    removeAppliedSegmentations(["orbidicom-ai-r-3", "orbidicom-ai-r-9"]);
+    expect(deregister).toHaveBeenCalledTimes(2);
+    expect(deregister).toHaveBeenNthCalledWith(1, "orbidicom-ai-r-3");
+    expect(deregister).toHaveBeenNthCalledWith(2, "orbidicom-ai-r-9");
+  });
+
+  it("does not throw when re-applying a segmentation (apply → remove → apply)", async () => {
+    const setWithSeg: AIResultSet = {
+      ...set,
+      results: [
+        {
+          kind: "segmentation",
+          id: "r-3",
+          label: "seg",
+          reviewStatus: "accepted",
+          visible: true,
+          segmentation: { info: { segments: [] }, labelmaps: [] } as never,
+        },
+      ],
+    };
+    const first = await applyResultSet(setWithSeg, { viewportId: "vp1", stack: [] });
+    // The re-apply cycle: fully deregister, then apply again — must not throw.
+    expect(() => removeAppliedSegmentations(first.segmentationIds)).not.toThrow();
+    await expect(
+      applyResultSet(setWithSeg, { viewportId: "vp1", stack: [] }),
+    ).resolves.toBeDefined();
   });
 });

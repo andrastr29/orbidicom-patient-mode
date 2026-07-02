@@ -199,6 +199,7 @@
       <AiResultsPanel
         v-if="aiResultsEnabled && aiPanelOpen"
         :result-set="aiResultSet"
+        :error="aiImportMsg"
         @import-file="onAiImport"
         @accept="onAiAccept"
         @reject="onAiReject"
@@ -287,6 +288,7 @@ import {
   removeApplied,
   removeAppliedSegmentations,
   exportAccepted,
+  ImportError,
 } from "@orbidicom/core";
 import type {
   StackHandle,
@@ -608,6 +610,9 @@ async function toggleSegmentation(seg: SegmentationInstance) {
 const aiResultsEnabled = computed(() => props.features?.aiResults === true);
 const aiPanelOpen = ref(false);
 const aiResultSet = ref<AIResultSet | null>(null);
+// User-visible import error (mirrors the srUploadMsg pattern). Set on a failed
+// import, cleared on the next successful one; bound to the panel's `error` prop.
+const aiImportMsg = ref<string | null>(null);
 // Handles (annotation UIDs + segmentation ids) the last apply added — removed
 // before every re-apply so accept/reject/toggle re-derive the on-screen state
 // from the (mutated) set, instead of leaking duplicate/stale representations.
@@ -642,13 +647,24 @@ async function buildAiCtx(): Promise<{
 async function reapplyAi() {
   const ctx = await buildAiCtx();
   removeApplied(aiApplied.annotationUids);
-  await removeAppliedSegmentations(ctx.viewportId, aiApplied.segmentationIds);
+  removeAppliedSegmentations(aiApplied.segmentationIds);
   aiApplied = aiResultSet.value
     ? await applyResultSet(aiResultSet.value, ctx)
     : { annotationUids: [], segmentationIds: [] };
 }
 async function onAiImport(file: File) {
-  aiResultSet.value = importResults(await file.text());
+  // All-or-nothing: parse+validate BEFORE mutating any state, so a bad file
+  // surfaces a visible error and leaves the prior result set intact (no partial
+  // state, no unhandled rejection).
+  let parsed: AIResultSet;
+  try {
+    parsed = importResults(await file.text());
+  } catch (e) {
+    aiImportMsg.value = e instanceof ImportError ? e.reason : String(e);
+    return;
+  }
+  aiImportMsg.value = null;
+  aiResultSet.value = parsed;
   await reapplyAi();
 }
 function onAiReject(id: string) {
