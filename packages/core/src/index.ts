@@ -27,6 +27,7 @@ export * from "./ai/types";
 export * from "./ai/stats";
 export * from "./ai/errors";
 export * from "./ai/import";
+export * from "./ai/measurement-to-annotation";
 // Side-effect import: registers the built-in adapters into the data-source
 // factory registry (keep last so the source modules above are initialized).
 import "./datasources/builtins";
