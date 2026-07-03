@@ -1,5 +1,14 @@
 # @orbidicom/vue
 
+## 0.11.2
+
+### Patch Changes
+
+- [`4c9dd9a`](https://github.com/docorbitapp/orbidicom/commit/4c9dd9a2aaa71d38e2e4c6998821b500dc05a8a7) Thanks [@gasci](https://github.com/gasci)! - Series rail: while a thumbnail is loading, the tile now shows a small muted
+  spinner instead of the shimmer placeholder, so it reads clearly as "loading".
+- Updated dependencies []:
+  - @orbidicom/core@0.11.2
+
 ## 0.11.1
 
 ### Patch Changes
