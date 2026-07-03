@@ -112,6 +112,10 @@ vi.mock("@orbidicom/core", () => {
     getAnnotationDeleteTargets: vi.fn(() => []),
     subscribeOverlayReposition: vi.fn(() => () => {}),
     createMprView,
+    createThumbnailProvider: vi.fn(() => ({
+      get: vi.fn().mockResolvedValue(null),
+      destroy: vi.fn(),
+    })),
     isVolumeCapable: (_s: unknown, n: number) => n >= 16,
     // Honors a custom protocol function; any built-in name defaults to single view.
     applyHangingProtocol: (

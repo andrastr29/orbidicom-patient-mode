@@ -6,21 +6,8 @@ mobile-responsive DICOM viewer. Owns Cornerstone3D setup, the pluggable `DataSou
 
 No Vue, no DOM-framework code, no hardcoded endpoints.
 
-<div align="center">
-  <em>The viewer this engine powers:</em>
-  <table>
-    <tr>
-      <td align="center" valign="top">
-        <img src="https://raw.githubusercontent.com/docorbitapp/orbidicom/main/docs/assets/desktop.png" alt="OrbiDICOM on a desktop reading station, a multi-pane DICOM viewer" width="600"><br>
-        <sub><b>Desktop</b>: multi-pane reading station</sub>
-      </td>
-      <td align="center" valign="top">
-        <img src="https://raw.githubusercontent.com/docorbitapp/orbidicom/main/docs/assets/mobile.png" alt="OrbiDICOM on a phone: the same viewer, mobile-first" width="190"><br>
-        <sub><b>Mobile</b>: same viewer, touch-friendly</sub>
-      </td>
-    </tr>
-  </table>
-</div>
+**Note:** OrbiDICOM's source repository is currently private, so the
+`github.com/docorbitapp/orbidicom` links in this README are not yet publicly accessible.
 
 ## What's inside
 

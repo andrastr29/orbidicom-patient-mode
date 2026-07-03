@@ -4,21 +4,6 @@ A **modern**, **mobile-responsive**, lightweight, extensible **Vue 3** DICOM vie
 into **any PACS** — Orthanc, dcm4chee, Google Healthcare, or a proxy — and also runs **fully
 offline** on local `.dcm`/`.nii` files.
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center" valign="top">
-        <img src="https://raw.githubusercontent.com/docorbitapp/orbidicom/main/docs/assets/desktop.png" alt="OrbiDICOM on a desktop reading station, a multi-pane DICOM viewer" width="600"><br>
-        <sub><b>Desktop</b>: multi-pane reading station</sub>
-      </td>
-      <td align="center" valign="top">
-        <img src="https://raw.githubusercontent.com/docorbitapp/orbidicom/main/docs/assets/mobile.png" alt="OrbiDICOM on a phone: the same viewer, mobile-first" width="190"><br>
-        <sub><b>Mobile</b>: same viewer, touch-friendly</sub>
-      </td>
-    </tr>
-  </table>
-</div>
-
 Built mobile-first: a touch-friendly, responsive UI that works everywhere from a phone to a
 4K reading station — selectable 1–10-up grids, an on-image metadata overlay with a privacy
 (blur) mode for demos, a DICOM metadata reader, cine playback, keyboard shortcuts, and W/L

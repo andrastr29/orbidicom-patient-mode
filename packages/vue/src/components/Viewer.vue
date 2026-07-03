@@ -42,7 +42,12 @@
 
     <div class="content">
       <div class="sidebar">
-        <SeriesRail :series="series" :active="seriesIdx[activeCell]" @select="selectSeries" />
+        <SeriesRail
+          :series="series"
+          :active="seriesIdx[activeCell]"
+          :provider="thumbnails"
+          @select="selectSeries"
+        />
         <!-- DICOM-SEG: per-series segmentations, each toggled as a labelmap overlay. -->
         <div v-if="segmentations.length" class="segs">
           <div class="segs__title">{{ t("segmentations") }}</div>
@@ -262,6 +267,7 @@ import {
   setPrimaryTool,
   TOOLS,
   createStack,
+  createThumbnailProvider,
   readImageMetadata,
   readMetadataGroups,
   resolveHotkey,
@@ -342,6 +348,9 @@ const props = defineProps<{
   features?: { aiResults?: boolean };
 }>();
 const series = ref<SeriesSummary[]>([]);
+// One shared preview provider for the rail (LRU-cached, lazy). Cheap to create —
+// it allocates no DOM/viewport until a series actually needs a client render.
+const thumbnails = createThumbnailProvider({ source: props.source });
 const cellCount = ref(1);
 const activeCell = ref(0);
 // "grid" = the stack-cell grid; "mpr" = a 3-plane volume reconstruction that
@@ -1120,6 +1129,7 @@ onUnmounted(() => {
   annotationHistory.reset();
   mpr?.destroy();
   mpr = null;
+  thumbnails.destroy();
   for (let i = 0; i < MAX_CELLS; i++) {
     tokens[i]++;
     stopCine(i);

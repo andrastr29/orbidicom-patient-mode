@@ -480,3 +480,60 @@ describe("DicomWebDataSource STOW-RS upload", () => {
     expect(fetchFn).toHaveBeenCalled();
   });
 });
+
+describe("DicomWebDataSource.getThumbnail", () => {
+  const series = {
+    seriesInstanceUID: "S1",
+    studyInstanceUID: "ST1",
+    modality: "CT",
+    numberOfFrames: 100,
+  };
+
+  it("fetches the WADO-RS series thumbnail and returns the JPEG blob", async () => {
+    const blob = new Blob(["jpg"], { type: "image/jpeg" });
+    const fetchFn = vi.fn(
+      async () => ({ ok: true, blob: async () => blob }) as unknown as Response,
+    );
+    const ds = new DicomWebDataSource({
+      root: "/pacs/dicom-web",
+      client: fakeClient as never,
+      fetchFn,
+    });
+    const out = await ds.getThumbnail(series);
+    expect(out).toBe(blob);
+    const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/pacs/dicom-web/studies/ST1/series/S1/thumbnail?viewport=200,200");
+    expect(init.headers).toMatchObject({ Accept: "image/jpeg" });
+  });
+
+  it("returns null on a non-ok response", async () => {
+    const fetchFn = vi.fn(
+      async () => ({ ok: false, blob: async () => new Blob() }) as unknown as Response,
+    );
+    const ds = new DicomWebDataSource({ root: "/r", client: fakeClient as never, fetchFn });
+    await expect(ds.getThumbnail(series)).resolves.toBeNull();
+  });
+
+  it("returns null when the fetch throws", async () => {
+    const fetchFn = vi.fn(async () => {
+      throw new Error("network");
+    });
+    const ds = new DicomWebDataSource({ root: "/r", client: fakeClient as never, fetchFn });
+    await expect(ds.getThumbnail(series)).resolves.toBeNull();
+  });
+
+  it("returns null (no fetch) when the series has no studyInstanceUID", async () => {
+    const fetchFn = vi.fn();
+    const ds = new DicomWebDataSource({ root: "/r", client: fakeClient as never, fetchFn });
+    await expect(ds.getThumbnail({ seriesInstanceUID: "S1" })).resolves.toBeNull();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("returns null on a 0-byte blob", async () => {
+    const fetchFn = vi.fn(
+      async () => ({ ok: true, blob: async () => new Blob([]) }) as unknown as Response,
+    );
+    const ds = new DicomWebDataSource({ root: "/r", client: fakeClient as never, fetchFn });
+    await expect(ds.getThumbnail(series)).resolves.toBeNull();
+  });
+});

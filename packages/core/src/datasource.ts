@@ -120,6 +120,15 @@ export interface DataSource {
   getSeries(studyUids: string[]): Promise<SeriesSummary[]>;
   getImageIds(series: SeriesSummary): Promise<string[]>;
   getMetadata?(imageId: string): Promise<InstanceMetadata>;
+  /**
+   * Optional cheap preview image for the series rail (e.g. a PACS thumbnail
+   * endpoint). Return null when unavailable for this series; the viewer then
+   * renders a preview client-side. Never required.
+   */
+  getThumbnail?(
+    series: SeriesSummary,
+    opts?: { signal?: AbortSignal },
+  ): Promise<Blob | string | null>;
   downloadArchive?(studyUid: string): Promise<Blob | void>;
   /** Search the worklist for studies (advertise via `capabilities.studySearch`). */
   searchStudies?(query?: StudyQuery): Promise<StudySummary[]>;

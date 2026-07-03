@@ -421,6 +421,34 @@ export class DicomWebDataSource implements DataSource {
     const payload = extractBulkPayload(buf, res.headers.get("Content-Type") ?? "");
     return URL.createObjectURL(new Blob([payload], { type: "application/pdf" }));
   }
+
+  /**
+   * WADO-RS rendered thumbnail for the series ({@link DataSource.getThumbnail}).
+   * Returns a JPEG Blob, or null if the server has no thumbnail for it (the viewer
+   * then renders one client-side). Never throws — a missing endpoint is expected.
+   */
+  async getThumbnail(
+    series: SeriesSummary,
+    opts: { signal?: AbortSignal } = {},
+  ): Promise<Blob | null> {
+    const studyUid = series.studyInstanceUID;
+    if (!studyUid) return null;
+    const url =
+      `${this.root}/studies/${studyUid}/series/${series.seriesInstanceUID}` +
+      `/thumbnail?viewport=200,200`;
+    try {
+      const res = await this.fetchFn(url, {
+        signal: opts.signal,
+        credentials: this.credentials,
+        headers: { Accept: "image/jpeg", ...this.headers },
+      });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return blob.size > 0 ? blob : null;
+    } catch {
+      return null;
+    }
+  }
 }
 
 // A fixed multipart boundary for STOW-RS bodies. DICOM instances are binary, so a
