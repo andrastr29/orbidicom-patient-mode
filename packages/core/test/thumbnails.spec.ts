@@ -101,6 +101,24 @@ describe("createThumbnailProvider", () => {
     expect(source.getImageIds).not.toHaveBeenCalled();
   });
 
+  it("short-circuits a report modality (SR) even when it reports a positive count", async () => {
+    const source = fakeSource();
+    const p = createThumbnailProvider({ source, thumbnailer: fakeThumbnailer() });
+    const sr: SeriesSummary = { seriesInstanceUID: "SR1", modality: "SR", numberOfFrames: 1 };
+    expect(await p.get(sr)).toBeNull();
+    expect(source.getImageIds).not.toHaveBeenCalled();
+  });
+
+  it("renders an image series whose instance count is unknown (undefined)", async () => {
+    const source = fakeSource(["a", "b", "c"]);
+    const thumbnailer = fakeThumbnailer();
+    const p = createThumbnailProvider({ source, thumbnailer });
+    // Count omitted (PACS didn't return it) — must NOT be treated as a report.
+    const ct: SeriesSummary = { seriesInstanceUID: "CT1", modality: "CT" };
+    expect(await p.get(ct)).toBe("blob:mock/0");
+    expect(thumbnailer.render).toHaveBeenCalledTimes(1);
+  });
+
   it("negative-caches when there are no imageIds (calls getImageIds once)", async () => {
     const source = fakeSource([]);
     const p = createThumbnailProvider({ source, thumbnailer: fakeThumbnailer() });

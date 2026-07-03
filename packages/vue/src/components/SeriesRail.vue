@@ -52,6 +52,7 @@
 </template>
 <script setup lang="ts">
 import { reactive, onBeforeMount, onUnmounted, watch } from "vue";
+import { isImageSeries } from "@orbidicom/core";
 import type { SeriesSummary, ThumbnailProvider } from "@orbidicom/core";
 import { t } from "../i18n";
 
@@ -90,10 +91,12 @@ let io: IntersectionObserver | null = null;
 function load(uid: string) {
   const s = seriesByUid.get(uid);
   if (!s) return;
-  // Mirror the provider's rule: an explicit zero-or-fewer frame count is a
-  // report/SR/PDF — show the document glyph and never ask for a preview.
+  // Mirror the provider's rule: a non-image modality (SR/DOC/KO/PR/AU) or an
+  // explicit zero-or-fewer instance count is a report — show the document glyph
+  // and never ask for a preview. An absent count (undefined) is "unknown", not a
+  // report, so image series on a PACS that omits the count still get a thumbnail.
   const n = s.numberOfFrames;
-  if (n != null && n <= 0) {
+  if (!isImageSeries(s) || (n != null && n <= 0)) {
     states[uid] = { kind: "doc", url: null };
     return;
   }
@@ -231,13 +234,18 @@ onUnmounted(() => io?.disconnect());
   color: var(--muted);
   opacity: 0.7;
 }
-/* Loading: a small muted spinner centered on the black thumbnail. */
+/* Loading: a small muted spinner centered on the black thumbnail. Uses solid
+   rgba borders (like the viewport .spinner) rather than color-mix(): iOS/WebKit
+   in-app web views can treat `color-mix(..., transparent)` as an invalid value,
+   which drops the whole `border` declaration (width 0) and leaves an invisible
+   spinner. The thumb background is always #000, so white-alpha is theme-agnostic
+   and guaranteed to contrast. */
 .rail__spinner {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
-  border-top-color: var(--muted);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.85);
   animation: rail-spin 0.7s linear infinite;
 }
 @keyframes rail-spin {

@@ -117,6 +117,9 @@ vi.mock("@orbidicom/core", () => {
       destroy: vi.fn(),
     })),
     isVolumeCapable: (_s: unknown, n: number) => n >= 16,
+    // Mirrors core's modality-based report test (SR/DOC/KO/PR/AU are non-image).
+    isImageSeries: (s: { modality?: string }) =>
+      !new Set(["SR", "DOC", "KO", "PR", "AU"]).has((s.modality ?? "").toUpperCase()),
     // Honors a custom protocol function; any built-in name defaults to single view.
     applyHangingProtocol: (
       ser: unknown[],

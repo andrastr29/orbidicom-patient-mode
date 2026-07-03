@@ -60,6 +60,20 @@ describe("DicomWebDataSource", () => {
     expect(series[0]).toMatchObject({ modality: "CT", seriesDescription: "Scout" });
   });
 
+  it("emits numberOfFrames undefined (not 0) when the PACS omits the instance count", async () => {
+    // NumberOfSeriesRelatedInstances (0020,1209) is an optional QIDO return field;
+    // a missing count must NOT read as a zero-instance report and suppress previews.
+    const noCount = {
+      searchForSeries: vi.fn(async () => [
+        { "0020000E": V("CT1"), "00080060": V("CT"), "00200011": V("1"), "0008103E": V("Axial") },
+      ]),
+      retrieveSeriesMetadata: vi.fn(async () => []),
+    };
+    const ds = new DicomWebDataSource({ root: "/pacs/dicom-web", client: noCount as never });
+    const series = await ds.getSeries(["study-1"]);
+    expect(series[0]!.numberOfFrames).toBeUndefined();
+  });
+
   it("still drops non-renderable, non-report modalities (PR/KO/PLAN)", async () => {
     const koClient = {
       searchForSeries: vi.fn(async () => [

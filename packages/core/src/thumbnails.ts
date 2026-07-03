@@ -1,4 +1,5 @@
 import type { DataSource, SeriesSummary } from "./datasource";
+import { isImageSeries } from "./hanging";
 import { createThumbnailer, type Thumbnailer } from "./cornerstone/thumbnail";
 
 /** Resolves a stable preview URL (or null) for a series, cheaply and at most once. */
@@ -85,8 +86,14 @@ export function createThumbnailProvider(opts: ThumbnailProviderOptions): Thumbna
   function resolve(series: SeriesSummary): Promise<string | null> {
     const key = series.seriesInstanceUID;
     const n = series.numberOfFrames;
-    // Reports/SR/PDF (explicitly zero frames): never renderable, never fetch.
-    if (n != null && n <= 0) return Promise.resolve(store(key, null));
+    // Never renderable — cache a null preview and never touch the network:
+    //  - a non-image modality (SR/DOC/KO/PR/AU) is a report, OR
+    //  - an explicit zero-or-fewer instance count.
+    // An absent count (undefined) is "unknown", NOT a report, so image series on a
+    // PACS that omits NumberOfSeriesRelatedInstances still get a client render.
+    if (!isImageSeries(series) || (n != null && n <= 0)) {
+      return Promise.resolve(store(key, null));
+    }
 
     return limit(async () => {
       if (destroyed) return null;

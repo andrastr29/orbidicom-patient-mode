@@ -81,6 +81,18 @@ function first(obj: Record<string, unknown>, tag: string): string {
 }
 const num = (obj: Record<string, unknown>, tag: string) => Number(first(obj, tag)) || 0;
 
+/**
+ * Like {@link num}, but returns `undefined` when the tag is absent/empty rather
+ * than collapsing it to 0. Used for optional QIDO counts (e.g.
+ * NumberOfSeriesRelatedInstances) so "the server didn't return a count" isn't
+ * conflated with "this series genuinely has zero instances" — the latter marks a
+ * report, the former must not disable image previews.
+ */
+const numOpt = (obj: Record<string, unknown>, tag: string): number | undefined => {
+  const raw = first(obj, tag);
+  return raw === "" ? undefined : Number(raw) || 0;
+};
+
 /** Read a multi-valued string tag (e.g. ModalitiesInStudy), or undefined if empty. */
 function multi(obj: Record<string, unknown>, tag: string): string[] | undefined {
   const vals = (obj?.[tag] as { Value?: unknown[] } | undefined)?.Value;
@@ -228,7 +240,9 @@ export class DicomWebDataSource implements DataSource {
             studyInstanceUID,
             modality,
             seriesDescription: first(s, TAG.SERIES_DESCRIPTION),
-            numberOfFrames: num(s, TAG.NUM_SERIES_INSTANCES),
+            // Optional QIDO field: undefined (not 0) when the PACS omits it, so a
+            // missing count doesn't read as a zero-instance report and suppress previews.
+            numberOfFrames: numOpt(s, TAG.NUM_SERIES_INSTANCES),
           },
           number: num(s, TAG.SERIES_NUMBER),
         });

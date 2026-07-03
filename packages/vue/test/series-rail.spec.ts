@@ -95,6 +95,29 @@ describe("SeriesRail", () => {
     expect(w.findAll(".rail__item")[0].find(".rail__glyph--none").exists()).toBe(true);
   });
 
+  it("shows the document glyph for a report modality (SR) even when it reports instances", async () => {
+    const provider = providerStub("blob:x");
+    const reports = [
+      { seriesInstanceUID: "SR1", modality: "SR", seriesDescription: "Report", numberOfFrames: 1 },
+    ];
+    const w = mount(SeriesRail, { props: { series: reports, active: 0, provider } });
+    await flushPromises();
+    expect(w.findAll(".rail__item")[0].find(".rail__glyph--doc").exists()).toBe(true);
+    expect(provider.get).not.toHaveBeenCalled();
+  });
+
+  it("still loads a thumbnail for an image series whose instance count is unknown", async () => {
+    const provider = providerStub("blob:mock/thumb");
+    // numberOfFrames omitted: a PACS that doesn't return the count must not disable previews.
+    const unknown = [{ seriesInstanceUID: "CT1", modality: "CT", seriesDescription: "Axial" }];
+    const w = mount(SeriesRail, { props: { series: unknown, active: 0, provider } });
+    await flushPromises();
+    expect(provider.get).toHaveBeenCalled();
+    expect(w.findAll(".rail__item")[0].find(".rail__img").attributes("src")).toBe(
+      "blob:mock/thumb",
+    );
+  });
+
   it("defers loading until a row scrolls into view when IntersectionObserver exists", async () => {
     const observedEls: Element[] = [];
     let trigger!: (entries: { target: Element; isIntersecting: boolean }[]) => void;
