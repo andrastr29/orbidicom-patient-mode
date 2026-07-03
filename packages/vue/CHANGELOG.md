@@ -1,5 +1,25 @@
 # @orbidicom/vue
 
+## 0.11.0
+
+### Minor Changes
+
+- [#11](https://github.com/docorbitapp/orbidicom/pull/11) [`dd744d1`](https://github.com/docorbitapp/orbidicom/commit/dd744d1f7b81f89882f9573e41fa5c7e300d664a) Thanks [@gasci](https://github.com/gasci)! - Series rail now shows a preview thumbnail for each series, on desktop and mobile.
+
+  - `@orbidicom/core`: new `createThumbnailProvider` (LRU-cached, single-flight,
+    concurrency-limited) and an offscreen `createThumbnailer`; an optional
+    `DataSource.getThumbnail` fast path, implemented for DICOMweb via the WADO-RS
+    thumbnail endpoint. Backends without it fall back to a client-side render, so
+    offline and local-file previews keep working.
+  - `@orbidicom/vue`: `SeriesRail` renders a leading preview (compact list on
+    desktop, thumbnail-over-caption tile strip on mobile) with skeleton and glyph
+    states, loading lazily via `IntersectionObserver`.
+
+### Patch Changes
+
+- Updated dependencies [[`dd744d1`](https://github.com/docorbitapp/orbidicom/commit/dd744d1f7b81f89882f9573e41fa5c7e300d664a)]:
+  - @orbidicom/core@0.11.0
+
 ## 0.10.0
 
 ### Minor Changes
