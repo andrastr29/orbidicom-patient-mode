@@ -40,7 +40,7 @@
           <rect x="4" y="5" width="16" height="14" rx="2" />
           <path d="M4 15l4-4 4 4 3-3 5 5" />
         </svg>
-        <span v-else class="rail__skeleton" aria-hidden="true"></span>
+        <span v-else class="rail__spinner" aria-hidden="true"></span>
         <span class="rail__ord">{{ i + 1 }}</span>
       </span>
       <span class="rail__body">
@@ -231,23 +231,22 @@ onUnmounted(() => io?.disconnect());
   color: var(--muted);
   opacity: 0.7;
 }
-.rail__skeleton {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, var(--panel-2) 25%, var(--elevated) 37%, var(--panel-2) 63%);
-  background-size: 400% 100%;
-  animation: rail-shimmer 1.4s ease infinite;
+/* Loading: a small muted spinner centered on the black thumbnail. */
+.rail__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-top-color: var(--muted);
+  animation: rail-spin 0.7s linear infinite;
 }
-@keyframes rail-shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: 0 0;
+@keyframes rail-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rail__skeleton {
+  .rail__spinner {
     animation: none;
   }
 }
@@ -303,6 +302,10 @@ onUnmounted(() => io?.disconnect());
   .rail__thumb {
     width: 64px;
     height: 64px;
+  }
+  .rail__spinner {
+    width: 18px;
+    height: 18px;
   }
   .rail__name {
     max-width: 64px;

@@ -53,6 +53,25 @@ describe("SeriesRail", () => {
     expect(provider.get).toHaveBeenCalled();
   });
 
+  it("shows a loading spinner on the thumbnail until the provider resolves", async () => {
+    let resolve!: (v: string | null) => void;
+    const provider = {
+      get: vi.fn(() => new Promise<string | null>((r) => (resolve = r))),
+      destroy: vi.fn(),
+    };
+    // A single series, so the one pending get() is the one we resolve.
+    const one = [{ seriesInstanceUID: "S1", modality: "CT", numberOfFrames: 120 }];
+    const w = mount(SeriesRail, { props: { series: one, active: 0, provider } });
+    await flushPromises(); // get is still pending → the row stays in the loading state
+    const item = () => w.findAll(".rail__item")[0];
+    expect(item().find(".rail__spinner").exists()).toBe(true);
+    expect(item().find(".rail__img").exists()).toBe(false);
+    resolve("blob:mock/thumb");
+    await flushPromises();
+    expect(item().find(".rail__spinner").exists()).toBe(false);
+    expect(item().find(".rail__img").exists()).toBe(true);
+  });
+
   it("shows the document glyph for a no-image report series and skips the provider", async () => {
     const provider = providerStub("blob:x");
     const reports = [
