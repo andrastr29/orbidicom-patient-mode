@@ -17,6 +17,7 @@
       :can-upload-sr="canUploadSr"
       :can-mpr="canMpr"
       :mpr-active="layoutMode === 'mpr'"
+      :stacked="gridStacked"
       :can-ai-results="aiResultsEnabled"
       @preset="applyPreset"
       @tool="selectTool"
@@ -40,7 +41,7 @@
       @open-ai-results="aiPanelOpen = !aiPanelOpen"
     />
 
-    <div class="content">
+    <div class="content" :class="{ 'rail-collapsed': railCollapsed }">
       <div class="sidebar">
         <SeriesRail
           :series="series"
@@ -65,6 +66,26 @@
           <slot name="actions" />
         </Controls>
       </div>
+
+      <!-- Collapse/expand the series rail to free up room for the images. -->
+      <button
+        class="rail-toggle"
+        type="button"
+        :aria-label="t('series')"
+        :aria-expanded="!railCollapsed"
+        @click="railCollapsed = !railCollapsed"
+      >
+        <svg
+          class="rail-toggle__icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+      </button>
 
       <div class="stage">
         <!-- Non-blocking warm-up bar: the active series decodes into cache in the
@@ -353,6 +374,11 @@ const series = ref<SeriesSummary[]>([]);
 const thumbnails = createThumbnailProvider({ source: props.source });
 const cellCount = ref(1);
 const activeCell = ref(0);
+// The 2-cell grid can be side-by-side (1×2) or stacked (2×1). Only meaningful
+// when cellCount === 2; any other layout choice resets it (see setLayout).
+const gridStacked = ref(false);
+// The series rail can be collapsed to give the stage more room. Session-only.
+const railCollapsed = ref(false);
 // "grid" = the stack-cell grid; "mpr" = a 3-plane volume reconstruction that
 // replaces the stage (the grid stays mounted but hidden). Min slices to bother.
 const MIN_MPR_SLICES = 16;
@@ -426,7 +452,9 @@ let stopHistory: (() => void) | null = null;
 // display:none and excluded from the CSS grid's auto-flow.
 const isVisible = (i: number) =>
   cellCount.value === 1 ? i === activeCell.value : i < cellCount.value;
-const gridClass = computed(() => `grid--n${cellCount.value}`);
+const gridClass = computed(
+  () => `grid--n${cellCount.value}${gridStacked.value ? " grid--n2-stacked" : ""}`,
+);
 
 // Refresh the overlay metadata for a cell from its current slice's imageId.
 // Best-effort + race-guarded: a late resolve is dropped if the slice moved on.
@@ -867,16 +895,21 @@ function stopCine(i: number) {
   }
 }
 
-function setLayout(n: number | "mpr") {
+function setLayout(n: number | "mpr" | "2v") {
   if (n === "mpr") {
     if (layoutMode.value !== "mpr") void enterMpr(); // re-entry guard
     return;
   }
   if (layoutMode.value === "mpr") exitMpr(); // leaving MPR for a normal grid
-  if (!VALID_LAYOUTS.has(n)) return;
-  cellCount.value = n;
+  // "2v" is the stacked (2×1) variant of the 2-cell grid; every other choice is a
+  // plain cell count and clears the stacked flag.
+  const stacked = n === "2v";
+  const count = stacked ? 2 : n;
+  if (!VALID_LAYOUTS.has(count)) return;
+  gridStacked.value = stacked;
+  cellCount.value = count;
   // Keep the focused cell within the visible range when shrinking the grid.
-  if (n > 1 && activeCell.value >= n) activeCell.value = 0;
+  if (count > 1 && activeCell.value >= count) activeCell.value = 0;
   // Stop cine on any cell that just became hidden.
   for (let i = 0; i < MAX_CELLS; i++) if (!isVisible(i)) stopCine(i);
 }
@@ -1155,6 +1188,8 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   min-height: 0;
+  /* Positioning context for the floating rail-collapse toggle. */
+  position: relative;
 }
 /* Left panel: the series rail scrolls, the controls dock pins to its bottom. */
 .sidebar {
@@ -1163,11 +1198,60 @@ onUnmounted(() => {
   flex: none;
   min-height: 0;
   border-right: 1px solid var(--border);
+  /* Collapse animates max-width (desktop) / max-height (mobile); the large
+     default never constrains the natural size. */
+  max-width: 400px;
+  transition:
+    max-width 0.2s ease,
+    max-height 0.2s ease;
+}
+.content.rail-collapsed .sidebar {
+  max-width: 0;
+  border-right: 0;
+  overflow: hidden;
 }
 .sidebar :deep(.rail) {
   flex: 1;
   min-height: 0;
   border-right: 0;
+}
+/* Floating chevron at the rail/stage boundary. It rides to the far left when the
+   rail is collapsed and flips its arrow to point back the other way. */
+.rail-toggle {
+  position: absolute;
+  top: 50%;
+  left: 200px;
+  transform: translateY(-50%);
+  z-index: 6;
+  width: 20px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    left 0.2s ease,
+    background 0.12s,
+    color 0.12s;
+}
+.rail-toggle:hover {
+  background: var(--elevated);
+  color: var(--text);
+}
+.rail-toggle__icon {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+.content.rail-collapsed .rail-toggle {
+  left: 4px;
+}
+.content.rail-collapsed .rail-toggle__icon {
+  transform: rotate(180deg);
 }
 .segs {
   flex: none;
@@ -1222,6 +1306,11 @@ onUnmounted(() => {
    skipped by grid auto-flow, so the visible cells fill the template exactly. */
 .grid--n2 {
   grid-template-columns: 1fr 1fr;
+}
+/* Stacked 2×1 variant of the 2-cell grid: two rows, one column. */
+.grid--n2-stacked {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
 }
 .grid--n4 {
   grid-template-columns: repeat(2, 1fr);
@@ -1593,9 +1682,30 @@ onUnmounted(() => {
   .sidebar {
     width: 100%;
     border-right: 0;
+    /* Full-width strip: drop the desktop width cap and collapse by height. */
+    max-width: none;
+    max-height: 50vh;
+  }
+  .content.rail-collapsed .sidebar {
+    max-width: none;
+    max-height: 0;
+    border-bottom: 0;
   }
   .sidebar :deep(.rail) {
     flex: none;
+  }
+  /* On phones the rail is a top strip, so pin the toggle to the top-right and
+     turn its chevron to point up (collapse) / down (expand). */
+  .rail-toggle {
+    top: 6px;
+    left: auto;
+    right: 6px;
+    transform: rotate(90deg);
+  }
+  .content.rail-collapsed .rail-toggle {
+    left: auto;
+    right: 6px;
+    transform: rotate(90deg);
   }
   .toploader__meta {
     flex-wrap: wrap;

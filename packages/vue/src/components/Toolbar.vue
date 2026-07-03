@@ -204,13 +204,13 @@
       <select
         class="layout__select"
         :aria-label="t('layout')"
-        :value="mprActive ? 'mpr' : String(layout)"
+        :value="mprActive ? 'mpr' : layout === 2 && stacked ? '2v' : String(layout)"
         @change="onLayoutChange(($event.target as HTMLSelectElement).value)"
       >
         <option
           v-for="opt in layoutOptions"
-          :key="opt.n"
-          :value="String(opt.n)"
+          :key="opt.value"
+          :value="opt.value"
           :disabled="opt.disabled"
           :title="opt.disabled ? t('mprFailed') : undefined"
         >
@@ -489,6 +489,8 @@ const props = defineProps<{
   canMpr?: boolean;
   /** Whether the viewer is currently in MPR mode (so the selector shows "MPR"). */
   mprActive?: boolean;
+  /** Whether the 2-cell grid is stacked (2×1) rather than side-by-side (1×2). */
+  stacked?: boolean;
   /** Whether the AI & Results panel is available (features.aiResults). */
   canAiResults?: boolean;
 }>();
@@ -505,7 +507,7 @@ const emit = defineEmits<{
   toggleKeyImage: [];
   exportKeyImages: [];
   uploadSr: [];
-  setLayout: [number | "mpr"];
+  setLayout: [number | "mpr" | "2v"];
   cycleOverlay: [];
   openMeta: [];
   toggleMenu: [];
@@ -520,24 +522,28 @@ const overlayTitle = computed(() =>
   mode.value === "full" ? t("overlayFull") : t("overlayPrivate"),
 );
 
-// Selectable viewport grids: cell count -> rows×cols label.
-const LAYOUT_OPTIONS: { n: number; label: string }[] = [
-  { n: 1, label: "1×1" },
-  { n: 2, label: "1×2" },
-  { n: 4, label: "2×2" },
-  { n: 6, label: "2×3" },
-  { n: 8, label: "2×4" },
-  { n: 10, label: "2×5" },
+// Selectable viewport grids. Each option's `value` is what setLayout receives:
+// a numeric string for the cell count, or a string sentinel. Two 2-cell variants
+// share the count but differ in orientation — "2" is side-by-side (1×2), "2v" is
+// stacked (2×1) — so they need distinct option values.
+const LAYOUT_OPTIONS: { value: string; label: string }[] = [
+  { value: "1", label: "1×1" },
+  { value: "2", label: "1×2" },
+  { value: "2v", label: "2×1" },
+  { value: "4", label: "2×2" },
+  { value: "6", label: "2×3" },
+  { value: "8", label: "2×4" },
+  { value: "10", label: "2×5" },
 ];
 // The MPR / 3D option is always listed (so it's discoverable), but disabled for
 // series that can't be reconstructed — a tooltip then explains why.
-const layoutOptions = computed<{ n: number | "mpr"; label: string; disabled: boolean }[]>(() => [
+const layoutOptions = computed<{ value: string; label: string; disabled: boolean }[]>(() => [
   ...LAYOUT_OPTIONS.map((o) => ({ ...o, disabled: false })),
-  { n: "mpr", label: t("mpr"), disabled: !props.canMpr },
+  { value: "mpr", label: t("mpr"), disabled: !props.canMpr },
 ]);
-// "mpr" stays a string sentinel; grid sizes parse to a number.
+// "mpr" and "2v" stay string sentinels; plain grid sizes parse to a number.
 function onLayoutChange(value: string) {
-  emit("setLayout", value === "mpr" ? "mpr" : Number(value));
+  emit("setLayout", value === "mpr" || value === "2v" ? value : Number(value));
 }
 
 // The whole field is a <label>, but tapping its leading icon/label (or the

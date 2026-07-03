@@ -184,9 +184,28 @@ describe("Toolbar", () => {
       props: { modality: "MR", activeTool: "WindowLevel", layout: 1 },
     });
     const opts = w.findAll(".layout__select option").map((o) => o.attributes("value"));
-    expect(opts).toEqual(["1", "2", "4", "6", "8", "10", "mpr"]);
+    expect(opts).toEqual(["1", "2", "2v", "4", "6", "8", "10", "mpr"]);
     await w.find(".layout__select").setValue("6");
     expect(w.emitted("setLayout")?.[0]).toEqual([6]);
+  });
+
+  it("offers a stacked 2×1 grid that emits the '2v' sentinel", async () => {
+    const w = mount(Toolbar, {
+      props: { modality: "MR", activeTool: "WindowLevel", layout: 1 },
+    });
+    const stacked = w
+      .findAll(".layout__select option")
+      .find((o) => o.attributes("value") === "2v")!;
+    expect(stacked.text()).toBe("2×1");
+    await w.find(".layout__select").setValue("2v");
+    expect(w.emitted("setLayout")?.[0]).toEqual(["2v"]);
+  });
+
+  it("reflects the active 2×1 (stacked) variant in the selector value", () => {
+    const w = mount(Toolbar, {
+      props: { modality: "MR", activeTool: "WindowLevel", layout: 2, stacked: true },
+    });
+    expect((w.find(".layout__select").element as HTMLSelectElement).value).toBe("2v");
   });
 
   it("always lists the MPR / 3D option but disables it (with a tooltip) when not volume-capable", () => {

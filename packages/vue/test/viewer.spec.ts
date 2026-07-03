@@ -331,6 +331,31 @@ describe("Viewer", () => {
     expect(w.findAll(".cell:not(.cell--hidden)").length).toBe(6);
   });
 
+  it("applies the stacked 2×1 grid class for the '2v' layout and clears it afterward", async () => {
+    const w = mount(Viewer, { props: { source: source as never } });
+    await flushPromises();
+    await w.find(".layout__select").setValue("2v");
+    await flushPromises();
+    const grid = w.find(".grid");
+    expect(grid.classes()).toContain("grid--n2");
+    expect(grid.classes()).toContain("grid--n2-stacked");
+    expect(w.findAll(".cell:not(.cell--hidden)").length).toBe(2); // still a 2-cell grid
+    // Any other layout choice clears the stacked flag.
+    await w.find(".layout__select").setValue("4");
+    await flushPromises();
+    expect(w.find(".grid").classes()).not.toContain("grid--n2-stacked");
+  });
+
+  it("collapses and re-expands the series rail via the rail toggle", async () => {
+    const w = mount(Viewer, { props: { source: source as never } });
+    await flushPromises();
+    expect(w.find(".content").classes()).not.toContain("rail-collapsed");
+    await w.find(".rail-toggle").trigger("click");
+    expect(w.find(".content").classes()).toContain("rail-collapsed");
+    await w.find(".rail-toggle").trigger("click");
+    expect(w.find(".content").classes()).not.toContain("rail-collapsed");
+  });
+
   it("keyboard shortcuts drive tool / view / preset actions on the active cell", async () => {
     setPrimaryTool.mockClear();
     stack.invert.mockClear();

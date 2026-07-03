@@ -296,16 +296,16 @@ onUnmounted(() => io?.disconnect());
     flex: none;
     flex-direction: column;
     align-items: stretch;
-    width: 96px;
+    width: 76px;
     padding: 6px;
     gap: 6px;
   }
   .rail__thumb {
-    width: 84px;
-    height: 84px;
+    width: 64px;
+    height: 64px;
   }
   .rail__name {
-    max-width: 84px;
+    max-width: 64px;
   }
 }
 </style>
