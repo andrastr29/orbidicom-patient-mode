@@ -16,15 +16,19 @@ const h = vi.hoisted(() => {
   };
   const engine = {
     enableElement: vi.fn(),
+    disableElement: vi.fn(),
     getViewport: vi.fn(() => vp),
     resize: vi.fn(),
     destroy: vi.fn(),
   };
+  // A single stable tool group so tests can assert add/removeViewports on it.
+  const toolGroup = { addViewport: vi.fn(), removeViewports: vi.fn() };
   return {
     vp,
     engine,
     RenderingEngine: vi.fn(() => engine),
-    getToolGroup: vi.fn(() => ({ addViewport: vi.fn() })),
+    toolGroup,
+    getToolGroup: vi.fn(() => toolGroup),
     evtAdd: vi.fn(),
     evtRemove: vi.fn(),
   };
@@ -122,6 +126,7 @@ describe("createStack", () => {
     ]) {
       expect(typeof (handle as unknown as Record<string, unknown>)[m]).toBe("function");
     }
+    handle.destroy(); // release so the shared engine resets for the next test
   });
 
   it("setStack loads imageIds and renders; destroy is safe and idempotent", async () => {
@@ -131,6 +136,7 @@ describe("createStack", () => {
     expect(h.vp.render).toHaveBeenCalled();
     handle.destroy();
     handle.destroy();
+    // The last live viewport is gone, so the shared engine is torn down once.
     expect(h.engine.destroy).toHaveBeenCalledTimes(1);
   });
 
@@ -145,5 +151,55 @@ describe("createStack", () => {
     // report/SR/PDF cell: nothing to capture, so it resolves null (not an error).
     const handle = createStack(fakeEl());
     await expect(handle.captureSliceJpeg()).resolves.toBeNull();
+    handle.destroy();
+  });
+
+  // Regression: every grid cell used to get its OWN RenderingEngine. Cornerstone
+  // 5's default engine eagerly allocates a POOL of webGlContextCount (=7) WebGL
+  // contexts PER engine, so N cells burned ~7·N contexts; a 2×2 grid crossed the
+  // browser's ~16-context ceiling and the browser discarded the OLDEST context —
+  // the first-loaded cell went black and never recovered. All cells must share
+  // ONE engine so the pooled contexts are bounded and reused.
+  it("shares a single RenderingEngine across all cells", () => {
+    const a = createStack(fakeEl());
+    const b = createStack(fakeEl());
+    const c = createStack(fakeEl());
+
+    // Exactly one engine constructed for three cells.
+    expect(h.RenderingEngine).toHaveBeenCalledTimes(1);
+    // Each cell still enables its own distinct viewport on that one engine.
+    expect(h.engine.enableElement).toHaveBeenCalledTimes(3);
+    const viewportIds = h.engine.enableElement.mock.calls.map((args) => args[0].viewportId);
+    expect(new Set(viewportIds).size).toBe(3);
+
+    // All viewports join the tool group under the SAME shared engine id.
+    expect(h.toolGroup.addViewport).toHaveBeenCalledTimes(3);
+    const engineIds = h.toolGroup.addViewport.mock.calls.map((args) => args[1]);
+    expect(new Set(engineIds).size).toBe(1);
+    // addViewport references the same engine id createStack enabled the viewport on.
+    expect(engineIds[0]).toBe(h.RenderingEngine.mock.calls[0][0]);
+
+    a.destroy();
+    b.destroy();
+    c.destroy();
+  });
+
+  it("destroy releases only this cell's viewport, tearing the engine down after the last", () => {
+    const a = createStack(fakeEl());
+    const b = createStack(fakeEl());
+    const aId = h.engine.enableElement.mock.calls[0][0].viewportId;
+    const bId = h.engine.enableElement.mock.calls[1][0].viewportId;
+
+    a.destroy();
+    // Cell A's viewport is removed from the engine + tool group, but the shared
+    // engine stays alive for cell B (destroying it would black out B).
+    expect(h.engine.disableElement).toHaveBeenCalledWith(aId);
+    expect(h.toolGroup.removeViewports).toHaveBeenCalledWith(expect.any(String), aId);
+    expect(h.engine.destroy).not.toHaveBeenCalled();
+
+    b.destroy();
+    // Last viewport gone → engine torn down exactly once.
+    expect(h.engine.disableElement).toHaveBeenCalledWith(bId);
+    expect(h.engine.destroy).toHaveBeenCalledTimes(1);
   });
 });

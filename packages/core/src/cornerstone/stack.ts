@@ -16,6 +16,54 @@ export type { WindowLevel };
 
 let seq = 0;
 
+// All stack viewports (grid cells + the offscreen thumbnailer) share ONE
+// RenderingEngine. Cornerstone 5's default engine (ContextPoolRenderingEngine)
+// EAGERLY allocates a pool of `webGlContextCount` (=7 by default) WebGL contexts
+// PER engine, so a fresh engine per grid cell burned ~7 contexts each. A 2×2 grid
+// then demanded ~28 contexts and blew past the browser's ~16-context ceiling; the
+// browser discards the OLDEST context, so the first-loaded cell went black — and
+// stayed black, since there is no context-restore path and reselecting a series
+// reuses the same dead engine. One shared engine keeps every cell's viewport in a
+// single bounded 7-context pool (the pool spreads viewports across its contexts),
+// exactly how createMprView already drives its four panes from one engine.
+const SHARED_ENGINE_ID = "orbidicom-stack-engine";
+let sharedEngine: RenderingEngine | null = null;
+// Live viewports on the shared engine, so it is torn down only once the last cell
+// (or the thumbnailer) is gone — and lazily rebuilt on the next createStack.
+let liveViewports = 0;
+
+function acquireEngine(): RenderingEngine {
+  if (!sharedEngine) sharedEngine = new RenderingEngine(SHARED_ENGINE_ID);
+  liveViewports++;
+  return sharedEngine;
+}
+
+// Remove one cell's viewport from the shared engine + tool group without
+// disturbing the others; destroy the engine only when it holds no more viewports.
+function releaseEngine(viewportId: string): void {
+  const engine = sharedEngine;
+  if (!engine) return;
+  try {
+    ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.removeViewports(SHARED_ENGINE_ID, viewportId);
+  } catch {
+    /* tool group already gone */
+  }
+  try {
+    engine.disableElement(viewportId);
+  } catch {
+    /* viewport already removed / engine mid-teardown */
+  }
+  liveViewports = Math.max(0, liveViewports - 1);
+  if (liveViewports === 0) {
+    try {
+      engine.destroy();
+    } catch {
+      /* mid-teardown */
+    }
+    sharedEngine = null;
+  }
+}
+
 export interface SliceInfo {
   index: number;
   count: number;
@@ -79,13 +127,12 @@ export interface StackHandle {
 
 export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): StackHandle {
   const n = seq++;
-  const engineId = `orbidicom-engine-${n}`;
   const viewportId = `stack-${n}`;
-  const engine = new RenderingEngine(engineId);
+  const engine = acquireEngine();
   engine.enableElement({ viewportId, type: Enums.ViewportType.STACK, element });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const vp = engine.getViewport(viewportId) as any;
-  ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.addViewport(viewportId, engineId);
+  ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.addViewport(viewportId, SHARED_ENGINE_ID);
 
   let count = 0;
   let cineOn = false;
@@ -316,7 +363,9 @@ export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): S
         Enums.Events.IMAGE_CACHE_IMAGE_ADDED,
         onCacheAdded as EventListener,
       );
-      engine.destroy();
+      // Remove just THIS cell's viewport; the shared engine (and its WebGL
+      // contexts) lives on for the other cells until the last one is released.
+      releaseEngine(viewportId);
     },
   };
 }
