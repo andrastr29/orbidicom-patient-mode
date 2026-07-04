@@ -1,5 +1,20 @@
 # @orbidicom/vue
 
+## 0.11.5
+
+### Patch Changes
+
+- [#15](https://github.com/docorbitapp/orbidicom/pull/15) [`9281738`](https://github.com/docorbitapp/orbidicom/commit/9281738c9e0919cea0367ff84ed6c4eaed388e90) Thanks [@gasci](https://github.com/gasci)! - Fix the series-rail thumbnail spinner appearing frozen (not rotating) on
+  iOS/WebKit. The spinner's parent `.rail__thumb` has `overflow: hidden` +
+  `border-radius`, and iOS Safari fails to repaint a rotating child under a
+  rounded clip — the ring rendered but sat static. The spinner is now promoted to
+  its own compositor layer with `will-change: transform`, which restores the
+  rotation. Also removes the `prefers-reduced-motion` guard so the rail spinner
+  matches the always-animating viewport spinner. (Follow-up to the 0.11.3 fix,
+  which only restored the spinner's _visibility_.)
+- Updated dependencies []:
+  - @orbidicom/core@0.11.5
+
 ## 0.11.4
 
 ### Patch Changes
