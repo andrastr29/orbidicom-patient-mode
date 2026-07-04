@@ -1,5 +1,12 @@
 # @orbidicom/vue
 
+## 0.11.6
+
+### Patch Changes
+
+- Updated dependencies [[`b19a512`](https://github.com/docorbitapp/orbidicom/commit/b19a51200990a3cfd3dc2e795ed276e7e3db55c6)]:
+  - @orbidicom/core@0.11.6
+
 ## 0.11.5
 
 ### Patch Changes

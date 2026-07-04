@@ -1,6 +1,6 @@
 {
   "name": "@orbidicom/core",
-  "version": "0.11.5",
+  "version": "0.11.6",
   "description": "Framework-agnostic engine for a modern, mobile-responsive DICOM viewer: Cornerstone3D setup, pluggable PACS/local DataSources, tools and W/L presets.",
   "license": "MIT",
   "homepage": "https://github.com/docorbitapp/orbidicom#readme",
