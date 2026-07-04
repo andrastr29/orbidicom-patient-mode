@@ -1,5 +1,16 @@
 # @orbidicom/vue
 
+## 0.11.4
+
+### Patch Changes
+
+- [`a882974`](https://github.com/docorbitapp/orbidicom/commit/a882974ed85c07eb0bf42616d1c54ee0b2eecd79) Thanks [@gasci](https://github.com/gasci)! - Remove the hover tooltip from the mobile header hamburger (menu) button. The
+  `v-tip` chip could surface over the toolbar and block content on some devices;
+  the button now carries a plain `aria-label` instead, so it keeps its accessible
+  name for screen readers but no longer renders a tooltip.
+- Updated dependencies []:
+  - @orbidicom/core@0.11.4
+
 ## 0.11.3
 
 ### Patch Changes
