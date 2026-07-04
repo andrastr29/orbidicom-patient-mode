@@ -11,7 +11,7 @@
     <!-- Mobile-only: hamburger that toggles the controls menu (language, host
          actions, hint). In normal flow, right before the title. -->
     <button
-      v-tip="t('menu')"
+      :aria-label="t('menu')"
       class="toolbar__menu"
       :class="{ 'toolbar__menu--active': menuOpen }"
       :aria-expanded="menuOpen ?? false"
