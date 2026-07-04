@@ -234,12 +234,18 @@ onUnmounted(() => io?.disconnect());
   color: var(--muted);
   opacity: 0.7;
 }
-/* Loading: a small muted spinner centered on the black thumbnail. Uses solid
-   rgba borders (like the viewport .spinner) rather than color-mix(): iOS/WebKit
-   in-app web views can treat `color-mix(..., transparent)` as an invalid value,
-   which drops the whole `border` declaration (width 0) and leaves an invisible
-   spinner. The thumb background is always #000, so white-alpha is theme-agnostic
-   and guaranteed to contrast. */
+/* Loading: a small spinner centered on the black thumbnail. Modeled on the
+   working viewport `.spinner`, with two iOS/WebKit guards:
+   1. Solid rgba borders, never color-mix(…, transparent) — WebKit in in-app web
+      views treats that as invalid and drops the whole `border` (width 0), so the
+      spinner is invisible. The thumb is always #000, so white-alpha is
+      theme-agnostic and always contrasts.
+   2. `will-change: transform` promotes the spinner onto its own compositor layer.
+      Its parent `.rail__thumb` has `overflow: hidden` + `border-radius`, and iOS
+      Safari fails to repaint a rotating child under that rounded clip — the ring
+      renders but sits frozen. Compositing it separately restores the spin.
+   No `prefers-reduced-motion` guard: the viewport `.spinner` has none, and the
+   rail is expected to match it. */
 .rail__spinner {
   width: 16px;
   height: 16px;
@@ -247,15 +253,11 @@ onUnmounted(() => io?.disconnect());
   border: 2px solid rgba(255, 255, 255, 0.25);
   border-top-color: rgba(255, 255, 255, 0.85);
   animation: rail-spin 0.7s linear infinite;
+  will-change: transform;
 }
 @keyframes rail-spin {
   to {
     transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .rail__spinner {
-    animation: none;
   }
 }
 .rail__ord {
