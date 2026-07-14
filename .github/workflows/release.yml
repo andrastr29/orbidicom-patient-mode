@@ -41,8 +41,13 @@ jobs:
       - run: pnpm build
       - run: pnpm test
 
+      # NOT npm@latest: npm 12 requires node >=22, so on this node-20 runner
+      # `npm@latest` resolves to a version it cannot install and the release dies
+      # here (EBADENGINE) — a break that arrives on its own, with no change to
+      # this repo, the day npm cuts a major. Pin the range that actually states
+      # our requirement: OIDC trusted publishing needs npm >= 11.5.1.
       - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@latest
+        run: npm install -g "npm@^11.5.1"
 
       - name: Pack (pnpm, rewrites workspace deps) + publish (npm, OIDC)
         run: |
