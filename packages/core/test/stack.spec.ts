@@ -23,6 +23,7 @@ const h = vi.hoisted(() => {
   };
   // A single stable tool group so tests can assert add/removeViewports on it.
   const toolGroup = { addViewport: vi.fn(), removeViewports: vi.fn() };
+  const prefetcher = { recenter: vi.fn(), destroy: vi.fn() };
   return {
     vp,
     engine,
@@ -31,8 +32,12 @@ const h = vi.hoisted(() => {
     getToolGroup: vi.fn(() => toolGroup),
     evtAdd: vi.fn(),
     evtRemove: vi.fn(),
+    prefetcher,
+    createPrefetcher: vi.fn(() => prefetcher),
   };
 });
+
+vi.mock("../src/cornerstone/prefetch", () => ({ createPrefetcher: h.createPrefetcher }));
 
 vi.mock("@cornerstonejs/core", () => ({
   RenderingEngine: h.RenderingEngine,
@@ -91,6 +96,7 @@ vi.stubGlobal(
   },
 );
 
+import * as csTools from "@cornerstonejs/tools";
 import { createStack } from "../src/cornerstone/stack";
 
 function fakeEl(): HTMLDivElement {
@@ -138,6 +144,30 @@ describe("createStack", () => {
     handle.destroy();
     // The last live viewport is gone, so the shared engine is torn down once.
     expect(h.engine.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("warms the series with our own prefetcher, not cornerstone's stackPrefetch", async () => {
+    const handle = createStack(fakeEl());
+    await handle.setStack(["wadors:x", "wadors:y"]);
+
+    expect(h.createPrefetcher).toHaveBeenCalledWith(["wadors:x", "wadors:y"]);
+    // stackPrefetch re-centers by clearing the WHOLE global prefetch pool, which
+    // would wipe every other grid cell's queued frames. We must not use it.
+    expect(csTools.utilities.stackPrefetch.enable).not.toHaveBeenCalled();
+
+    handle.destroy();
+    expect(h.prefetcher.destroy).toHaveBeenCalled();
+  });
+
+  it("re-centers the prefetch queue when the displayed slice changes", async () => {
+    const handle = createStack(fakeEl());
+    await handle.setStack(["wadors:x", "wadors:y"]);
+
+    const onNewImage = h.evtAdd.mock.calls.find(([type]) => type === "a")![1];
+    onNewImage({ detail: { imageIdIndex: 1 } });
+
+    expect(h.prefetcher.recenter).toHaveBeenCalledWith(1);
+    handle.destroy(); // the shared engine is module state; don't leak a viewport
   });
 
   it("captureSliceJpeg resolves null once the viewport is destroyed", async () => {

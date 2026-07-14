@@ -8,6 +8,7 @@ import {
 } from "@cornerstonejs/core";
 import { ToolGroupManager, utilities as csToolsUtils, annotation } from "@cornerstonejs/tools";
 import { TOOL_GROUP_ID } from "./init";
+import { createPrefetcher, type Prefetcher } from "./prefetch";
 import { voiToWl, nextFrame, compositeSliceJpeg, type WindowLevel } from "./capture";
 import { renderSegmentation, removeSegmentationFromViewport } from "./seg";
 import type { SegmentationData } from "../datasource";
@@ -163,10 +164,11 @@ export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): S
   // fires it. (The old detail.element guard never matched -> counter stuck at 1.)
   const onStackNewImage = (e: Event) => {
     const idx = (e as CustomEvent).detail?.imageIdIndex;
-    cb.onSlice?.({
-      index: typeof idx === "number" ? idx : (vp.getCurrentImageIdIndex?.() ?? 0),
-      count,
-    });
+    const index = typeof idx === "number" ? idx : (vp.getCurrentImageIdIndex?.() ?? 0);
+    cb.onSlice?.({ index, count });
+    // Warm outward from where the user actually is, not from where the series
+    // was opened — otherwise scrolling ahead of the warm region stays slow.
+    prefetcher?.recenter(index);
   };
   const onVoiModified = (e: Event) => {
     if ((e as CustomEvent).detail?.viewportId === viewportId) emitVoi();
@@ -184,6 +186,7 @@ export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): S
   // can show a non-blocking "caching" bar while the user already scrolls.
   let stackIds = new Set<string>();
   const loadedIds = new Set<string>();
+  let prefetcher: Prefetcher | null = null;
   const emitPrefetch = () => cb.onPrefetch?.({ loaded: loadedIds.size, total: stackIds.size });
   // The cache event is global (all viewports share one cache), so filter to the
   // ids that belong to this stack before counting.
@@ -233,14 +236,16 @@ export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): S
       emitSlice();
       emitVoi();
       // Warm the ENTIRE series in the background so the first scroll/cine pass
-      // doesn't pay a network round-trip + decode per slice. stackPrefetch queues
-      // every slice into the low-priority Prefetch pool — nearest-to-current first.
-      // The active slice (Interaction priority) always preempts the warm-up.
-      try {
-        csToolsUtils.stackPrefetch.enable(element);
-      } catch {
-        /* prefetch is an optimization; never let it break loading */
-      }
+      // doesn't pay a network round-trip + decode per slice. Frames go into the
+      // low-priority Prefetch pool nearest-to-current first, so the active slice
+      // (Interaction priority) always preempts the warm-up.
+      //
+      // NOT cornerstone's stackPrefetch: it re-centers by clearing the entire
+      // GLOBAL prefetch pool, which would wipe every other grid cell's queued
+      // frames — and an idle cell only re-queues on its own slice change, so it
+      // would never recover. See ./prefetch.
+      prefetcher?.destroy();
+      prefetcher = createPrefetcher(imageIds);
     },
     setWindowLevel(ww: number, wc: number) {
       if (destroyed) return;
@@ -344,11 +349,8 @@ export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): S
       if (destroyed) return;
       destroyed = true;
       ro.disconnect();
-      try {
-        csToolsUtils.stackPrefetch.disable(element);
-      } catch {
-        /* ignore — element may already be torn down */
-      }
+      prefetcher?.destroy();
+      prefetcher = null;
       if (cineOn) {
         try {
           csToolsUtils.cine.stopClip(element);
