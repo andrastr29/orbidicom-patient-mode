@@ -1,5 +1,14 @@
 # @orbidicom/vue
 
+## 0.11.8
+
+### Patch Changes
+
+- docs: point READMEs at the now-public source repository and drop the stale "repository is private" note
+
+- Updated dependencies []:
+  - @orbidicom/core@0.11.8
+
 ## 0.11.7
 
 ### Patch Changes

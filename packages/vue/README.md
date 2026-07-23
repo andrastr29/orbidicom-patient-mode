@@ -5,8 +5,7 @@ multilingual DICOM viewer. Components: `Viewer`, `Toolbar`, `SeriesRail`, `MetaP
 `LangSwitcher`, `StudyList`, `Controls`, plus live i18n (20 built-in languages incl. RTL, searchable switcher) and
 CSS-variable theming.
 
-**Note:** OrbiDICOM's source repository is currently private, so the
-`github.com/docorbitapp/orbidicom` links in this README are not yet publicly accessible.
+Source and issues: <https://github.com/docorbitapp/orbidicom>
 
 > This package ships Vue single-file components as **source**. You need a Vue 3 + bundler
 > (Vite, etc.) toolchain that can compile `.vue`/`.ts` from `node_modules`.

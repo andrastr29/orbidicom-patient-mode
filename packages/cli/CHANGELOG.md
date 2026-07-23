@@ -1,5 +1,11 @@
 # orbidicom
 
+## 0.11.8
+
+### Patch Changes
+
+- docs: point READMEs at the now-public source repository and drop the stale "repository is private" note
+
 ## 0.11.7
 
 ## 0.11.6

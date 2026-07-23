@@ -4,8 +4,7 @@ The CLI for **OrbiDICOM** — a modern, mobile-responsive, multilingual, open-so
 viewer (Vue 3 + Cornerstone3D). One command serves the viewer in your browser: locally on
 `.dcm`/`.nii` files, or against any DICOMweb PACS.
 
-**Note:** OrbiDICOM's source repository is currently private, so the
-`github.com/docorbitapp/orbidicom` links in this README are not yet publicly accessible.
+Source and issues: <https://github.com/docorbitapp/orbidicom>
 
 ## Quick start
 

@@ -6,8 +6,7 @@ mobile-responsive DICOM viewer. Owns Cornerstone3D setup, the pluggable `DataSou
 
 No Vue, no DOM-framework code, no hardcoded endpoints.
 
-**Note:** OrbiDICOM's source repository is currently private, so the
-`github.com/docorbitapp/orbidicom` links in this README are not yet publicly accessible.
+Source and issues: <https://github.com/docorbitapp/orbidicom>
 
 ## What's inside
 
