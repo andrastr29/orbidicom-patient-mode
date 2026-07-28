@@ -254,8 +254,21 @@ function load(uid: string) {
 // Function ref on each row's thumbnail: register it with the observer once. Vue
 // re-invokes this on updates, so guard with `observed`.
 function bindThumb(el: Element | null, s: SeriesSummary) {
-  if (!el) return;
   const uid = s.seriesInstanceUID;
+  if (!el) {
+    // Vue calls the ref with null when the row unmounts — which happens every
+    // time its study group collapses, not just on removal from props.series. A
+    // row that was bound and observed but never intersected (states[uid] still
+    // undefined) has no fetch in flight, so its `observed` entry must be cleared
+    // here: otherwise `observed.has(uid)` stays true forever, and on re-expand
+    // the guard below short-circuits before the new element is ever registered
+    // with the observer — the thumbnail spins forever with no way to recover.
+    // A row already mid-fetch (`kind: "loading"`) or resolved needs no action:
+    // its promise (or its finished result) doesn't depend on the element, and
+    // re-observing it would risk a duplicate `load()` call once it remounts.
+    if (states[uid] === undefined) observed.delete(uid);
+    return;
+  }
   seriesByUid.set(uid, s);
   if (observed.has(uid)) return;
   observed.add(uid);

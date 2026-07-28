@@ -223,6 +223,57 @@ describe("SeriesRail", () => {
     expect(provider.get).toHaveBeenCalledTimes(2); // S1 not refetched
     expect(w.findAll(".rail__item").length).toBe(1);
   });
+
+  it("re-observes surviving pending rows against the new observer after a removal-triggered rebuild", async () => {
+    const provider = providerStub("blob:mock/thumb");
+    const instances: {
+      observedEls: Element[];
+      cb: (e: { target: Element; isIntersecting: boolean }[]) => void;
+    }[] = [];
+    class FakeIO {
+      observedEls: Element[] = [];
+      cb: (e: { target: Element; isIntersecting: boolean }[]) => void;
+      constructor(cb: (e: { target: Element; isIntersecting: boolean }[]) => void) {
+        this.cb = cb;
+        instances.push(this);
+      }
+      observe(el: Element) {
+        this.observedEls.push(el);
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("IntersectionObserver", FakeIO);
+    try {
+      const three = [
+        { seriesInstanceUID: "S1", modality: "CT", numberOfFrames: 10 },
+        { seriesInstanceUID: "S2", modality: "CT", numberOfFrames: 10 },
+        { seriesInstanceUID: "S3", modality: "CT", numberOfFrames: 10 },
+      ];
+      const w = mount(SeriesRail, { props: { series: three, active: 0, provider } });
+      await flushPromises();
+      // Nothing intersects, so all three rows stay pending (bound, not loaded).
+      expect(provider.get).not.toHaveBeenCalled();
+      expect(instances.length).toBe(1);
+      expect(instances[0].observedEls.length).toBe(3);
+      // Remove S3 — a genuine disappearance, so the observer is disconnected
+      // and rebuilt. S1 and S2 survive but were still pending on the OLD
+      // observer, which is now dead.
+      await w.setProps({ series: [three[0], three[1]], active: 0, provider });
+      await flushPromises();
+      expect(instances.length).toBe(2); // rebuilt
+      // The survivors must be re-registered on the NEW instance, not stranded
+      // on the disconnected one.
+      expect(instances[1].observedEls.length).toBe(2);
+      // Prove it end-to-end: intersecting on the new observer still resolves.
+      instances[1].cb([{ target: instances[1].observedEls[0], isIntersecting: true }]);
+      await flushPromises();
+      expect(provider.get).toHaveBeenCalledTimes(1);
+      expect(w.findAll(".rail__item")[0].find(".rail__img").exists()).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe("multi-study grouping", () => {
@@ -418,5 +469,47 @@ describe("multi-study grouping", () => {
     // first group), not restore the stale collapsed choice from before it left.
     await w.setProps({ series: twoStudies, active: 0 });
     expect(w.findAll(".rail__item").length).toBe(2);
+  });
+
+  it("re-registers a still-pending row whose element unmounted on collapse, once its group re-expands", async () => {
+    const provider = providerStub("blob:mock/thumb");
+    const observedEls: Element[] = [];
+    let trigger!: (entries: { target: Element; isIntersecting: boolean }[]) => void;
+    class FakeIO {
+      constructor(cb: (entries: { target: Element; isIntersecting: boolean }[]) => void) {
+        trigger = cb;
+      }
+      observe(el: Element) {
+        observedEls.push(el);
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("IntersectionObserver", FakeIO);
+    try {
+      const w = mount(SeriesRail, { props: { series: twoStudies, active: 0, provider } });
+      await flushPromises();
+      // Group 1 (N1, N2) is expanded by default and both rows are observed.
+      expect(observedEls.length).toBe(2);
+      // Expand group 2: its row (O1) mounts, binds, and registers — but nothing
+      // intersects it, so it stays pending (never resolved).
+      await w.findAll(".rail__group-toggle")[1].trigger("click");
+      expect(observedEls.length).toBe(3);
+      expect(provider.get).not.toHaveBeenCalled();
+      // Collapse it again: O1's element unmounts while still pending.
+      await w.findAll(".rail__group-toggle")[1].trigger("click");
+      // Re-expand: a fresh element mounts. Without the fix, O1's stale `observed`
+      // entry from the first mount would make bindThumb's guard short-circuit,
+      // and the new element would never be registered — permanently orphaned.
+      await w.findAll(".rail__group-toggle")[1].trigger("click");
+      expect(observedEls.length).toBe(4); // O1 re-registered on the new element
+      // Prove it end-to-end: intersecting the re-registered element still loads.
+      trigger([{ target: observedEls[3], isIntersecting: true }]);
+      await flushPromises();
+      expect(provider.get).toHaveBeenCalledTimes(1);
+      expect(w.findAll(".rail__item")[2].find(".rail__img").exists()).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
