@@ -46,9 +46,23 @@
         <SeriesRail
           :series="series"
           :active="seriesIdx[activeCell]"
+          :displayed="displayedSeriesIdx"
           :provider="thumbnails"
           @select="selectSeries"
+          @close-study="onCloseStudy"
         />
+        <button v-if="canAddStudy" class="rail-add" type="button" @click="addStudyOpen = true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span>{{ t("addStudy") }}</span>
+        </button>
         <!-- DICOM-SEG: per-series segmentations, each toggled as a labelmap overlay. -->
         <div v-if="segmentations.length" class="segs">
           <div class="segs__title">{{ t("segmentations") }}</div>
@@ -248,6 +262,19 @@
       </div>
     </div>
 
+    <div v-if="confirmCloseUid" class="modal" @click.self="confirmCloseUid = null">
+      <div class="modal__card">
+        <p v-if="confirmCloseLabel" class="modal__subject">{{ confirmCloseLabel }}</p>
+        <p class="modal__msg">{{ t("confirmCloseStudy") }}</p>
+        <div class="modal__actions">
+          <button class="modal__btn" @click="confirmCloseUid = null">{{ t("cancel") }}</button>
+          <button class="modal__btn modal__btn--danger" @click="doCloseStudy">
+            {{ t("closeStudy") }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="confirmUploadSrOpen" class="modal" @click.self="!srUploadBusy && closeUploadSr()">
       <div class="modal__card">
         <p class="modal__msg">{{ srUploadMsg ?? t("confirmUploadSr") }}</p>
@@ -270,10 +297,19 @@
         </div>
       </div>
     </div>
+
+    <div v-if="addStudyOpen" class="modal" @click.self="addStudyOpen = false">
+      <div class="modal__card modal__card--wide">
+        <StudyList :source="source" :open-uids="openStudyUids" @open="onPickStudy" />
+        <div class="modal__actions">
+          <button class="modal__btn" @click="addStudyOpen = false">{{ t("cancel") }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
 import Toolbar from "./Toolbar.vue";
 import SeriesRail from "./SeriesRail.vue";
 import Controls from "./Controls.vue";
@@ -283,6 +319,7 @@ import PdfView from "./PdfView.vue";
 import SrView from "./SrView.vue";
 import AnnotationOverlay from "./AnnotationOverlay.vue";
 import AiResultsPanel from "./AiResultsPanel.vue";
+import StudyList from "./StudyList.vue";
 import {
   initCornerstone,
   setPrimaryTool,
@@ -310,6 +347,7 @@ import {
   VR_PRESETS,
   defaultVrPreset,
   applyHangingProtocol,
+  orderStudyGroups,
   importResults,
   applyResultSet,
   removeApplied,
@@ -333,7 +371,7 @@ import type {
   SegmentationInstance,
   AIResultSet,
 } from "@orbidicom/core";
-import { t, dir, getLang } from "../i18n";
+import { t, dir, getLang, formatDicomDate } from "../i18n";
 
 // Mirrors the whole viewer for right-to-left UI languages (Arabic, Persian, …).
 // Reactive: reading getLang() tracks setLang(), so switching language flips dir.
@@ -368,6 +406,18 @@ const props = defineProps<{
   /** Per-deployment feature toggles (from runtime config). */
   features?: { aiResults?: boolean };
 }>();
+/**
+ * `studyUids` is a two-way surface: hosts can bind `v-model:study-uids` and see
+ * the built-in affordances (the rail's close button, Task 9's study picker) move
+ * the open set, not only their own prop writes.
+ */
+const emit = defineEmits<{ "update:studyUids": [string[]] }>();
+// Kicked off at setup, not in onMounted: the studyUids watcher is live from setup
+// and can reach loadIntoCell -> createStack before onMounted's await would have
+// resolved, building a viewport against an uninitialised Cornerstone. Everything
+// that touches a viewport awaits this first. Idempotent by construction — one
+// promise per component, started once.
+const csReady = initCornerstone();
 const series = ref<SeriesSummary[]>([]);
 // One shared preview provider for the rail (LRU-cached, lazy). Cheap to create —
 // it allocates no DOM/viewport until a series actually needs a client render.
@@ -392,6 +442,10 @@ const mprEls = {
 };
 let mpr: MprHandle | null = null;
 let enteringMpr = false;
+// Which cell's series the reconstruction was built from. The MPR is a separate
+// handle from that cell's stack and covers the whole stage, so blanking the cell
+// (its study closed) has to tear the volume down too — see blankCell.
+let mprCell = -1;
 // Active 3D volume-rendering preset (only meaningful in MPR mode).
 const vrPreset = ref<string>(VR_PRESETS[0]);
 const activeTool = ref<string>(TOOLS.WindowLevel);
@@ -440,7 +494,68 @@ const prefetchTotal = reactive<number[]>(fill(0));
 const els: (HTMLDivElement | null)[] = fill(null);
 const stacks: (StackHandle | null)[] = fill(null);
 const cellImageIds: string[][] = Array.from({ length: MAX_CELLS }, () => []);
+// seriesInstanceUID -> the imageIds the viewer actually resolved for it. Keyed by
+// series and scoped to the session, NOT to whichever cell happens to show it now:
+// a user can measure a series, scroll a different one into that cell, and the
+// measurement still belongs to the first. Dropped only when its study closes.
+const loadedImageIds = new Map<string, string[]>();
 const tokens = fill(0);
+
+/**
+ * Clear one cell back to "empty": its series is gone, so drop the stack, the
+ * per-cell reactive state and any report view. The grid already renders an
+ * empty-cell placeholder for seriesIdx === -1.
+ */
+function blankCell(i: number) {
+  // Invalidate any in-flight load for this cell (same guard loadIntoCell uses).
+  tokens[i]++;
+  // The MPR is a second handle rendering this cell's series over the whole stage,
+  // and nothing else drops it (exitMpr is only reachable from setLayout/onMprError).
+  // Left alone it would keep displaying — and captureJpeg would keep exporting —
+  // the closed study's reconstruction long after the rail forgot the study.
+  if (layoutMode.value === "mpr" && mprCell === i) exitMpr();
+  stopCine(i);
+  clearPdf(i);
+  // Destroy, don't just forget: the handle owns this cell's viewport on the shared
+  // rendering engine, and its canvas keeps painting the last rendered slice. The
+  // empty-cell placeholder is a transparent chip, so a leaked viewport would leave
+  // the *closed study's image* on screen. ensureStack() rebuilds a fresh handle on
+  // the next load into this cell.
+  stacks[i]?.destroy();
+  stacks[i] = null;
+  cellImageIds[i] = [];
+  seriesIdx[i] = -1;
+  sliceIndex[i] = 0;
+  sliceCount[i] = 0;
+  wl[i] = null;
+  meta[i] = null;
+  cellLoading[i] = false;
+  prefetchLoaded[i] = 0;
+  prefetchTotal[i] = 0;
+  imageVersion.value++;
+}
+
+/**
+ * Re-point every cell at the same *series* after `series.value` is reordered or
+ * filtered. seriesIdx holds positional indices, and newest-first ordering moves
+ * series on add as well as on close — so both paths must translate
+ * index -> UID -> new index. Cells whose series is gone are blanked.
+ */
+function remapCells(prev: SeriesSummary[], next: SeriesSummary[]) {
+  // null marks "this cell was already empty"; a cell pointing at a series that
+  // isn't in `prev` (shouldn't happen, but the arrays are independent) yields ""
+  // and is treated as gone rather than silently kept at a stale index.
+  const before = seriesIdx.map((i) => (i >= 0 ? (prev[i]?.seriesInstanceUID ?? "") : null));
+  const pos = new Map(next.map((s, i) => [s.seriesInstanceUID, i]));
+  for (let c = 0; c < MAX_CELLS; c++) {
+    const uid = before[c];
+    if (uid === null) continue; // cell was already empty
+    const at = pos.get(uid);
+    if (at == null) blankCell(c);
+    else seriesIdx[c] = at;
+  }
+}
+
 // Unsubscribe from the global annotation-change listener (set on mount).
 let unsubscribeMeasurements: (() => void) | null = null;
 // Annotation undo/redo: stack-change subscription + Cornerstone event wiring teardown.
@@ -452,6 +567,9 @@ let stopHistory: (() => void) | null = null;
 // display:none and excluded from the CSS grid's auto-flow.
 const isVisible = (i: number) =>
   cellCount.value === 1 ? i === activeCell.value : i < cellCount.value;
+// Flat indices of every series on screen (not just the active cell) — the rail
+// keeps a group expanded when it holds one of these.
+const displayedSeriesIdx = computed(() => seriesIdx.filter((si, c) => si >= 0 && isVisible(c)));
 const gridClass = computed(
   () => `grid--n${cellCount.value}${gridStacked.value ? " grid--n2-stacked" : ""}`,
 );
@@ -479,6 +597,25 @@ const canCine = computed(() => sliceCount[activeCell.value] > 1);
 const canDownload = computed(
   () => !!props.source.capabilities.downloadArchive && !!props.source.downloadArchive,
 );
+// Branch on the advertised capability, never on backend type.
+const canAddStudy = computed(
+  () =>
+    !!props.source.capabilities?.multiStudy &&
+    !!props.source.capabilities?.studySearch &&
+    typeof props.source.searchStudies === "function",
+);
+const addStudyOpen = ref(false);
+
+async function onPickStudy(uid: string) {
+  addStudyOpen.value = false;
+  // Record it as picker-owned BEFORE the fetch: a prop write landing mid-flight
+  // must not be able to treat it as a study the host dropped. Skipped when the
+  // prop already names it — then the host owns it and always has.
+  if (!openStudyUids.value.includes(uid) && !(props.studyUids ?? []).includes(uid)) {
+    pickedStudyUids.add(uid);
+  }
+  await addStudies([uid]);
+}
 // Slice export needs a rendered image stack. Report/SR/PDF and empty cells never
 // set a positive sliceCount, so this is false for them (same signal as canCine).
 const canDownloadImage = computed(() => sliceCount[activeCell.value] > 0);
@@ -638,6 +775,272 @@ async function toggleSegmentation(seg: SegmentationInstance) {
   }
 }
 
+// --- Multi-study session ----------------------------------------------------
+// Studies can be added and closed mid-session. `series.value` stays a single flat
+// list ordered newest-study-first (orderStudyGroups), so every mutation moves the
+// positional indices seriesIdx holds — remapCells re-points the cells by UID.
+const openStudyUids = ref<string[]>([]);
+
+/** Single writer for the open set, so hosts binding v-model:study-uids see add
+ *  and close from the built-in affordances too — not only their own prop. */
+function setOpenStudies(uids: string[]) {
+  openStudyUids.value = uids;
+  emit("update:studyUids", uids);
+}
+
+// Study uids whose getSeries() is in flight. The idempotence guard has to consult
+// this as well as openStudyUids: the latter is only written *after* the fetch
+// resolves, so two prop changes in the same tick would otherwise both get past it
+// and merge the same study's block twice.
+const pendingStudyUids = new Set<string>();
+
+// Studies opened from the built-in picker, which `studyUids` never named. The
+// close pass reads "absent from the prop" as "the host dropped it" — true for a
+// study the prop once carried, but a picker-opened one was never there, so an
+// uncontrolled host (one that binds :study-uids and ignores update:studyUids, as
+// the demo does) would silently destroy it, with its measurements and no confirm,
+// on its very next prop write — the watcher fires on identity, not content.
+// Ownership transfers to the host the moment its prop does name the study.
+const pickedStudyUids = new Set<string>();
+
+/**
+ * Load one or more studies into the session, as a single source round trip. A
+ * user-initiated single-study add (the study picker) calls `addStudies([uid])`.
+ *
+ * Deliberately NOT applyInitialLayout() unless the session is empty: that resets
+ * annotation history, clears key images and segmentation toggles and re-runs the
+ * hanging protocol — right on mount, destructive mid-session. Adding to a live
+ * session preserves annotations, key images, window/level, cellCount and
+ * activeCell; only array positions move, which remapCells absorbs.
+ */
+async function addStudies(uids: string[], initial = false) {
+  const want: string[] = [];
+  for (const uid of uids) {
+    if (!uid || openStudyUids.value.includes(uid) || pendingStudyUids.has(uid)) continue;
+    if (!want.includes(uid)) want.push(uid); // a repeated uid is one study
+  }
+  // The bootstrap load hits the source even with no uids: `studyUids` is optional,
+  // and a local-file or single-study backend ignores the argument and returns
+  // whatever it holds. Only while the session is genuinely unclaimed, though —
+  // the watcher can beat onMounted (a prop change, or just a parent re-render
+  // passing a fresh array literal, during Cornerstone init), and then an empty
+  // getSeries([]) means "every study you have" to DicomJson/Local. Those extra
+  // studies would merge into the rail while `want` leaves openStudyUids empty,
+  // so the close pass — which only iterates openStudyUids — could never remove
+  // them: another patient's series, stuck in the rail for the session.
+  const unclaimed = !openStudyUids.value.length && !pendingStudyUids.size && !series.value.length;
+  if (!want.length && !(initial && unclaimed)) return;
+  for (const uid of want) pendingStudyUids.add(uid);
+  let added: SeriesSummary[];
+  try {
+    added = await props.source.getSeries(want);
+  } finally {
+    // Cleared here, and the merge below runs synchronously from this point, so no
+    // other task can observe a uid as neither pending nor open.
+    for (const uid of want) pendingStudyUids.delete(uid);
+  }
+  // "Empty session", not "no cell is hung": a viewer can hold an open study with
+  // key images while every cell happens to be blank (its series was swapped out,
+  // then its study closed). Re-hanging then would silently destroy that work.
+  // Read after the fetch but before the merge, so it describes the session we are
+  // actually adding to — not the one that existed when the request went out.
+  const wasEmpty = !series.value.length;
+  // A source that ignores the uid argument can hand back series the session
+  // already holds; merging a block twice would duplicate rail rows and leave
+  // remapCells pointing cells at the second copy.
+  const have = new Set(series.value.map((s) => s.seriesInstanceUID));
+  const fresh = added.filter((s) => !have.has(s.seriesInstanceUID));
+  if (fresh.length) {
+    const prev = series.value;
+    const next = orderStudyGroups([...prev, ...fresh]);
+    remapCells(prev, next);
+    series.value = next;
+  }
+  setOpenStudies([...openStudyUids.value, ...want]);
+  // Nothing was on screen (mounted, or every study since closed), so there is no
+  // user work to preserve — hang the new set rather than leaving the stage blank
+  // until the user clicks a rail row.
+  if (wasEmpty && series.value.length) await applyInitialLayout();
+  ensureSomethingShown();
+}
+
+/**
+ * Put something on screen when the session holds series but no visible cell does.
+ *
+ * Non-destructive on purpose, which is what makes it safe where applyInitialLayout
+ * is not: it resets no annotation history, clears no key images or segmentation
+ * toggles, and leaves cellCount/activeCell alone — it only fills a cell that is
+ * already empty. Without it, replacing study A with study B (mount hangs A, the
+ * merge sees a non-empty session so it doesn't hang B, then the close pass blanks
+ * A's cell) leaves a black stage: at cellCount === 1 even the "pick a series" chip
+ * is suppressed by its own cellCount > 1 guard.
+ */
+function ensureSomethingShown() {
+  if (!series.value.length) return;
+  for (let c = 0; c < MAX_CELLS; c++) if (isVisible(c) && seriesIdx[c] >= 0) return;
+  void loadIntoCell(activeCell.value, 0);
+}
+
+/**
+ * Bring the session in line with `props.studyUids`. The ONLY writer of the open
+ * set from the prop — mount goes through it too, so an initial load and a
+ * mid-session change can never write `series.value` from two directions.
+ */
+async function syncOpenStudies(initial = false) {
+  const want = props.studyUids ?? [];
+  await addStudies(
+    want.filter((uid) => !openStudyUids.value.includes(uid)),
+    initial,
+  );
+  // Re-read the prop after the await: a host that swaps studies while the first
+  // fetch is still in flight must win over the load already on its way, or the
+  // study it dismissed stays open (and on mount would replace what it asked for).
+  // A host that never passes `studyUids` isn't managing the set — close nothing.
+  const latest = props.studyUids;
+  if (!latest) return;
+  for (const uid of [...openStudyUids.value]) {
+    if (latest.includes(uid)) {
+      pickedStudyUids.delete(uid); // the host now names it, so the host owns it
+      continue;
+    }
+    if (pickedStudyUids.has(uid)) continue; // picker-opened; the prop never had it
+    closeStudy(uid);
+  }
+}
+
+// props.studyUids is reactive: a host can add or drop studies mid-session. The
+// diff is idempotent, so re-entering it (e.g. after our own update:studyUids)
+// loads nothing twice. Wrapped so the watcher's (new, old) args can't be mistaken
+// for the `initial` flag.
+watch(
+  () => props.studyUids,
+  () => syncOpenStudies(),
+);
+
+/**
+ * Every imageId the viewer has ever resolved for these series — read from the
+ * session-scoped map, not from the cells. A series that was displayed, annotated
+ * and then scrolled out of its cell still carries that work, and closing its study
+ * must find it.
+ */
+function loadedImageIdsFor(removed: SeriesSummary[]): Set<string> {
+  const ids = new Set<string>();
+  for (const s of removed) {
+    for (const id of loadedImageIds.get(s.seriesInstanceUID) ?? []) ids.add(id);
+  }
+  return ids;
+}
+
+/** Does anything the user made belong to these series? Key images carry their own
+ *  seriesInstanceUID (captured at flag time), so they are matched on that as well
+ *  as on imageId — the two agree, but the uid holds even if a reload changed ids. */
+function hasUserWork(removed: SeriesSummary[]): boolean {
+  const uids = new Set(removed.map((s) => s.seriesInstanceUID));
+  const ids = loadedImageIdsFor(removed);
+  return (
+    [...keyImages.values()].some((k) => ids.has(k.imageId) || uids.has(k.seriesInstanceUID)) ||
+    collectMeasurements().some((m) => ids.has(m.imageId))
+  );
+}
+
+/**
+ * Discard the closed study's user work, so a measurement export can never
+ * reference a study that is no longer open. History is reset rather than trimmed:
+ * AnnotationHistory exposes only reset(), and a partial history that can redo a
+ * measurement onto a closed study is worse than none — the same reasoning as
+ * doClearAnnotations.
+ */
+function purgeUserWork(removed: SeriesSummary[]) {
+  const uids = new Set(removed.map((s) => s.seriesInstanceUID));
+  const ids = loadedImageIdsFor(removed);
+  let touched = false;
+  for (const m of collectMeasurements()) {
+    if (ids.has(m.imageId)) {
+      deleteAnnotation(m.annotationUID);
+      touched = true;
+    }
+  }
+  // Snapshot before deleting — keyImages is reactive and this mutates it.
+  for (const k of [...keyImages.values()]) {
+    if (ids.has(k.imageId) || uids.has(k.seriesInstanceUID)) {
+      keyImages.delete(k.imageId);
+      touched = true;
+    }
+  }
+  if (!touched) return;
+  annotationHistory.reset();
+  refreshAllAnnotations();
+}
+
+/**
+ * Forget the closed study's segmentation toggles. `shownSegs` is keyed by SOP
+ * Instance UID, not series UID, so the only way back to the right keys is to
+ * re-list each removed series through the same source call that produced them.
+ * Rebuilding the set from the `segmentations` computed would be wrong: that only
+ * covers the ACTIVE cell's series, so it would drop toggles that belong to studies
+ * which are still open.
+ */
+function dropSegmentationsFor(removed: SeriesSummary[]) {
+  if (!shownSegs.size) return;
+  for (const s of removed) {
+    for (const seg of props.source.listSegmentations?.(s) ?? []) shownSegs.delete(seg.sopUid);
+  }
+}
+
+function closeStudy(uid: string) {
+  const removed = series.value.filter((s) => s.studyInstanceUID === uid);
+  if (!removed.length) {
+    // Open, but the source returned no series for it. Still drop it from the open
+    // set, so a host's v-model converges instead of re-requesting it forever.
+    if (openStudyUids.value.includes(uid)) {
+      setOpenStudies(openStudyUids.value.filter((u) => u !== uid));
+    }
+    return;
+  }
+  const prev = series.value;
+  const next = prev.filter((s) => s.studyInstanceUID !== uid);
+  purgeUserWork(removed);
+  dropSegmentationsFor(removed);
+  remapCells(prev, next);
+  series.value = next;
+  for (const s of removed) loadedImageIds.delete(s.seriesInstanceUID);
+  pickedStudyUids.delete(uid);
+  thumbnails.release(removed.map((s) => s.seriesInstanceUID));
+  setOpenStudies(openStudyUids.value.filter((u) => u !== uid));
+  ensureSomethingShown();
+}
+
+const confirmCloseUid = ref<string | null>(null);
+
+/**
+ * Which study the close confirm is about, in the same identity line the rail's
+ * group header shows (date · description · patient). With two patients open at
+ * once — the whole point of this feature — an unnamed destructive confirm is the
+ * wrong affordance. Composed alongside the existing message rather than
+ * interpolated into it, so no locale string changes shape.
+ */
+const confirmCloseLabel = computed(() => {
+  const uid = confirmCloseUid.value;
+  if (!uid) return "";
+  const st = series.value.find((s) => s.studyInstanceUID === uid)?.study;
+  const who = st?.patientName || st?.patientId || "";
+  return [formatDicomDate(st?.studyDate), st?.studyDescription, who].filter(Boolean).join(" · ");
+});
+
+/** Close is destructive, so it asks first — but only when there is something to
+ *  lose. Dismissing a prior you merely glanced at stays frictionless. */
+function onCloseStudy(uid: string) {
+  const removed = series.value.filter((s) => s.studyInstanceUID === uid);
+  if (hasUserWork(removed)) confirmCloseUid.value = uid;
+  else closeStudy(uid);
+}
+
+function doCloseStudy() {
+  const uid = confirmCloseUid.value;
+  confirmCloseUid.value = null;
+  if (uid) closeStudy(uid);
+}
+
 // --- AI & Results (Phase 1) -------------------------------------------------
 // A right-dock panel imports an AIResultSet (JSON) and applies its accepted +
 // visible results to the active cell: measurements become real Cornerstone
@@ -794,6 +1197,7 @@ async function loadIntoCell(i: number, si: number) {
   }
   clearPdf(i);
   cellImageIds[i] = imageIds;
+  loadedImageIds.set(s.seriesInstanceUID, imageIds);
   sliceCount[i] = imageIds.length;
   // The series-list count is a pre-fetch estimate (e.g. QIDO instance count),
   // which under-reports multi-frame series where one instance yields many frames
@@ -807,6 +1211,13 @@ async function loadIntoCell(i: number, si: number) {
 
   try {
     if (imageIds.length) {
+      // The single choke point for viewport creation: applyInitialLayout,
+      // selectSeries and ensureSomethingShown all funnel through here, and the
+      // studyUids watcher can reach any of them before Cornerstone is ready.
+      await csReady;
+      // csReady is a new suspension point, so re-check the load token before
+      // building anything into a cell that may have been blanked meanwhile.
+      if (token !== tokens[i]) return;
       await ensureStack(i).setStack(imageIds);
       void refreshMeta(i);
     } else {
@@ -922,6 +1333,7 @@ async function enterMpr() {
   const ids = cellImageIds[i];
   if (ids.length < MIN_MPR_SLICES) return;
   enteringMpr = true;
+  mprCell = i;
   stopCine(i);
   mprReady.value = false;
   layoutMode.value = "mpr";
@@ -959,6 +1371,7 @@ function onVrPreset(name: string) {
 function exitMpr() {
   mpr?.destroy();
   mpr = null;
+  mprCell = -1;
   mprReady.value = false;
   layoutMode.value = "grid";
 }
@@ -990,7 +1403,11 @@ function doClearAnnotations() {
 }
 
 function activeStudyUid(): string {
-  return series.value[seriesIdx[activeCell.value]]?.studyInstanceUID ?? props.studyUids?.[0] ?? "";
+  // Fall back to what is actually open, not to the prop: after a close the prop's
+  // first entry can name a study this session no longer holds.
+  return (
+    series.value[seriesIdx[activeCell.value]]?.studyInstanceUID ?? openStudyUids.value[0] ?? ""
+  );
 }
 function onDownloadStudy() {
   void Promise.resolve(props.source.downloadArchive?.(activeStudyUid())).catch((e) =>
@@ -1127,9 +1544,13 @@ onMounted(async () => {
   unsubscribeMeasurements = onMeasurementsChanged(() => annotationVersion.value++);
   stopHistory = startAnnotationHistory();
   unsubscribeHistory = annotationHistory.subscribe(() => historyVersion.value++);
-  await initCornerstone();
-  series.value = await props.source.getSeries(props.studyUids ?? []);
-  if (series.value.length) await applyInitialLayout();
+  await csReady;
+  // The initial load is just the first reconciliation: one getSeries() for the
+  // whole prop, ordered newest-study-first, hung by the protocol because the
+  // session is empty. Going through syncOpenStudies (rather than assigning
+  // series.value here) means a host that swaps studies while this is still in
+  // flight cannot end up with the mount's result overwriting theirs unremapped.
+  await syncOpenStudies(true);
 });
 
 // Arrange the loaded series per the hanging protocol (default "single" keeps the
@@ -1149,9 +1570,30 @@ async function applyInitialLayout() {
   cellCount.value = snapLayout(cc);
   activeCell.value = 0;
   const cells = Math.min(cellCount.value, assignments.length, MAX_CELLS);
+  // Resolve the protocol's positional picks to series UIDs before loading any of
+  // them. `assignments` is computed once but consumed across awaits, and a
+  // concurrent addStudies reorders series.value — remapCells repairs cells that
+  // are already loaded, but it cannot touch an index this loop hasn't reached, so
+  // a positional replay would hang a different study's series than the protocol
+  // chose.
+  const picks: (string | null)[] = [];
   for (let c = 0; c < cells; c++) {
-    if (assignments[c] >= 0) await loadIntoCell(c, assignments[c]);
+    const s = assignments[c] >= 0 ? series.value[assignments[c]] : undefined;
+    picks.push(s?.seriesInstanceUID ?? null);
   }
+  // Start every cell in the same tick instead of sequentially. loadIntoCell writes
+  // seriesIdx synchronously, so this makes `displayedSeriesIdx` complete before
+  // Vue's first flush — the rail materializes each study group's collapse default
+  // exactly once, at that flush, and a sequential loop left cells >= 1 still empty
+  // then, permanently collapsing a study whose only on-screen series was headed
+  // for a later cell.
+  const pos = new Map(series.value.map((s, i) => [s.seriesInstanceUID, i]));
+  await Promise.all(
+    picks.map((uid, c) => {
+      const si = uid == null ? undefined : pos.get(uid);
+      return si == null ? undefined : loadIntoCell(c, si);
+    }),
+  );
 }
 
 onUnmounted(() => {
@@ -1630,6 +2072,15 @@ onUnmounted(() => {
   border-radius: var(--r-md);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
 }
+.modal__subject {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 .modal__msg {
   margin: 0 0 18px;
   color: var(--text);
@@ -1672,6 +2123,34 @@ onUnmounted(() => {
 .modal__btn--primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.modal__card--wide {
+  width: min(720px, 92vw);
+}
+
+.rail-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 8px 0;
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rail-add:hover {
+  background: var(--elevated);
+  color: var(--text);
+}
+.rail-add svg {
+  width: 13px;
+  height: 13px;
 }
 
 @media (max-width: 640px) {

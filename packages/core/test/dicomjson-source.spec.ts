@@ -109,4 +109,59 @@ describe("DicomJsonDataSource", () => {
     expect(meta.imageId).toBe(id);
     expect(meta["00080018"]).toEqual(V("sop-1"));
   });
+
+  it("fills study-level facts from instance metadata", async () => {
+    const ds = new DicomJsonDataSource({
+      metadata: [
+        {
+          "0020000D": { Value: ["ST1"] },
+          "0020000E": { Value: ["S1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["MR"] },
+          "00080020": { Value: ["20231002"] },
+          "00081030": { Value: ["BRAIN MR"] },
+          "00100010": { Value: [{ Alphabetic: "ROE^RICHARD" }] },
+          "00100020": { Value: ["PID-9"] },
+        },
+      ],
+    });
+    const [s] = await ds.getSeries(["ST1"]);
+    expect(s.study).toEqual({
+      studyDate: "20231002",
+      studyDescription: "BRAIN MR",
+      patientName: "ROE^RICHARD",
+      patientId: "PID-9",
+    });
+  });
+
+  it("returns the newest study first instead of interleaving series numbers", async () => {
+    const ds = new DicomJsonDataSource({
+      metadata: [
+        {
+          "0020000D": V("OLD"),
+          "0020000E": V("O1"),
+          "00200011": V(1),
+          "00080060": V("CT"),
+          "00080020": V("20240101"),
+        },
+        {
+          "0020000D": V("OLD"),
+          "0020000E": V("O2"),
+          "00200011": V(2),
+          "00080060": V("CT"),
+          "00080020": V("20240101"),
+        },
+        {
+          "0020000D": V("NEW"),
+          "0020000E": V("N1"),
+          "00200011": V(1),
+          "00080060": V("CT"),
+          "00080020": V("20260314"),
+        },
+      ],
+    });
+    // Requested oldest-first; the newest study must still come back first.
+    const out = await ds.getSeries(["OLD", "NEW"]);
+    expect(out.map((s) => s.seriesInstanceUID)).toEqual(["N1", "O1", "O2"]);
+  });
 });

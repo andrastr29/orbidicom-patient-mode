@@ -110,6 +110,76 @@ describe("DicomWebDataSource", () => {
       "wadors:/pacs/dicom-web/studies/study-1/series/S1/instances/sop-1/frames/1",
     );
   });
+
+  it("fills study-level facts from the series-search response", async () => {
+    const client = {
+      searchForSeries: async () => [
+        {
+          "0020000E": { Value: ["S1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["CT"] },
+          "0008103E": { Value: ["Axial"] },
+          "00080020": { Value: ["20240115"] },
+          "00081030": { Value: ["CHEST CT"] },
+          "00100010": { Value: [{ Alphabetic: "DOE^JANE" }] },
+          "00100020": { Value: ["PID-7"] },
+        },
+      ],
+    };
+    const ds = new DicomWebDataSource({ root: "/dw", client: client as never });
+    const [s] = await ds.getSeries(["ST1"]);
+    expect(s.study).toEqual({
+      studyDate: "20240115",
+      studyDescription: "CHEST CT",
+      patientName: "DOE^JANE",
+      patientId: "PID-7",
+    });
+  });
+
+  it("omits absent study facts rather than storing empty strings", async () => {
+    const client = {
+      searchForSeries: async () => [
+        { "0020000E": { Value: ["S1"] }, "00080060": { Value: ["CT"] } },
+      ],
+    };
+    const ds = new DicomWebDataSource({ root: "/dw", client: client as never });
+    const [s] = await ds.getSeries(["ST1"]);
+    expect(s.study).toEqual({});
+  });
+
+  it("returns the newest study first instead of interleaving series numbers", async () => {
+    const bySeries: Record<string, unknown[]> = {
+      OLD: [
+        {
+          "0020000E": { Value: ["O1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["CT"] },
+          "00080020": { Value: ["20240101"] },
+        },
+        {
+          "0020000E": { Value: ["O2"] },
+          "00200011": { Value: [2] },
+          "00080060": { Value: ["CT"] },
+          "00080020": { Value: ["20240101"] },
+        },
+      ],
+      NEW: [
+        {
+          "0020000E": { Value: ["N1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["CT"] },
+          "00080020": { Value: ["20260314"] },
+        },
+      ],
+    };
+    const client = {
+      searchForSeries: async (q: { studyInstanceUID: string }) => bySeries[q.studyInstanceUID],
+    };
+    const ds = new DicomWebDataSource({ root: "/dw", client: client as never });
+    // Requested oldest-first; the newest study must still come back first.
+    const out = await ds.getSeries(["OLD", "NEW"]);
+    expect(out.map((s) => s.seriesInstanceUID)).toEqual(["N1", "O1", "O2"]);
+  });
 });
 
 describe("DicomWebDataSource encapsulated PDFs", () => {

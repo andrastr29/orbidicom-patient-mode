@@ -7,6 +7,7 @@ import type {
   SrTree,
 } from "../datasource";
 import { srTreeFromParser, type ParserDataSet } from "../sr/from-parser";
+import { orderStudyGroups } from "../study-order";
 
 // Encapsulated PDF Storage SOP Class UID (mirrors DicomWebDataSource).
 const ENCAPSULATED_PDF_SOP = "1.2.840.10008.5.1.4.1.1.104.1";
@@ -23,6 +24,17 @@ export interface LocalTags {
   seriesDescription: string;
   sopInstanceUID: string;
   instanceNumber: number;
+  /** StudyInstanceUID (0020,000D). Absent → the file joins the synthetic "local"
+   *  study, which is how loose files with no study identity behaved before
+   *  multi-study support. Optional so an injected `parseFile` needn't supply it. */
+  studyInstanceUID?: string;
+  /** Raw DICOM DA string (0008,0020), e.g. "20240115" — orders studies newest-first. */
+  studyDate?: string;
+  studyDescription?: string;
+  /** PatientName (0010,0010), raw (e.g. "DOE^JANE") — matching how the worklist
+   *  and the rail's group headers render it. */
+  patientName?: string;
+  patientId?: string;
   /** NumberOfFrames (0028,0008) — how many frames this one instance carries.
    *  Multi-frame objects (Enhanced PET/CT, NM, cine) pack every slice into a
    *  single file; each frame is a separately-addressable image. Absent/≤1 means a
@@ -69,15 +81,22 @@ export interface LocalOptions {
 /**
  * A {@link DataSource} for local `.dcm` files with no PACS. Files are registered
  * with Cornerstone's wadouri file manager (each yields a `dicomfile:` imageId)
- * and grouped into series via parsed DICOM tags. All files are treated as one
- * synthetic study ("local"), so {@link getSeries} ignores its `studyUids` arg.
+ * and grouped into series via parsed DICOM tags, then into studies by
+ * StudyInstanceUID — a dropped folder or archive holding a current exam and its
+ * prior surfaces as two groups rather than one merged pile. Files carrying no
+ * StudyInstanceUID fall back to a synthetic "local" study. Everything already
+ * ingested is returned regardless of the `studyUids` argument, which has no
+ * meaning without a PACS to query.
  */
 export class LocalDataSource implements DataSource {
   readonly capabilities: DataSourceCapabilities = {
     downloadArchive: false,
     encapsulatedPdf: true,
     reports: { pdf: true, sr: true },
-    multiStudy: false,
+    // A dropped folder can hold several studies. `studySearch` stays absent:
+    // there is no worklist to query, so the viewer offers no add-study button —
+    // the only way to add files locally is to drop more of them.
+    multiStudy: true,
   };
   private series = new Map<
     string,
@@ -151,12 +170,20 @@ export class LocalDataSource implements DataSource {
   private entryFor(t: LocalTags) {
     let entry = this.series.get(t.seriesInstanceUID);
     if (!entry) {
+      // Only non-empty facts are stored, so "the file didn't carry a study date"
+      // reads as absent rather than as an empty label in the rail's header.
+      const study: NonNullable<SeriesSummary["study"]> = {};
+      if (t.studyDate) study.studyDate = t.studyDate;
+      if (t.studyDescription) study.studyDescription = t.studyDescription;
+      if (t.patientName) study.patientName = t.patientName;
+      if (t.patientId) study.patientId = t.patientId;
       entry = {
         summary: {
           seriesInstanceUID: t.seriesInstanceUID,
-          studyInstanceUID: "local",
+          studyInstanceUID: t.studyInstanceUID || "local",
           modality: t.modality,
           seriesDescription: t.seriesDescription,
+          study,
         },
         seriesNumber: t.seriesNumber,
         instances: [],
@@ -168,13 +195,18 @@ export class LocalDataSource implements DataSource {
   }
 
   async getSeries(_studyUids: string[]): Promise<SeriesSummary[]> {
-    return [...this.series.values()]
-      .sort((a, b) => a.seriesNumber - b.seriesNumber)
-      .map((e) => ({
-        ...e.summary,
-        // Count renderable frames, not files: a multi-frame instance is many images.
-        numberOfFrames: e.instances.reduce((n, i) => n + i.frames, 0),
-      }));
+    // Sort by series number first, then reorder whole study blocks newest-first —
+    // grouping preserves relative order, so each block stays series-number-ordered.
+    // A single study (the common local-file case) is returned untouched.
+    return orderStudyGroups(
+      [...this.series.values()]
+        .sort((a, b) => a.seriesNumber - b.seriesNumber)
+        .map((e) => ({
+          ...e.summary,
+          // Count renderable frames, not files: a multi-frame instance is many images.
+          numberOfFrames: e.instances.reduce((n, i) => n + i.frames, 0),
+        })),
+    );
   }
 
   async getImageIds(series: SeriesSummary): Promise<string[]> {
@@ -318,6 +350,14 @@ async function defaultParseFile(file: File): Promise<LocalTags> {
     seriesDescription: ds.string("x0008103e") || "",
     sopInstanceUID: ds.string("x00080018") || "",
     instanceNumber: Number(ds.string("x00200013")) || 0,
+    // Study-level tags, read from the dataset already in hand — they cost no
+    // extra work and let a dropped folder holding a current exam plus its prior
+    // group into two studies instead of one merged pile.
+    studyInstanceUID: ds.string("x0020000d") || "",
+    studyDate: ds.string("x00080020") || "",
+    studyDescription: ds.string("x00081030") || "",
+    patientName: ds.string("x00100010") || "",
+    patientId: ds.string("x00100020") || "",
     // NumberOfFrames (0028,0008): multi-frame objects (Enhanced PET/CT, NM, cine)
     // pack every slice into one file. Absent → single-frame.
     numberOfFrames: Number(ds.string("x00280008")) || 1,

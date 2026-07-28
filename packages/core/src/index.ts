@@ -3,6 +3,7 @@ export * from "./auth";
 export * from "./registry";
 export * from "./plugins";
 export * from "./hanging";
+export * from "./study-order";
 export * from "./hotkeys";
 export * from "./imageIds";
 export * from "./presets";

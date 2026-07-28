@@ -180,4 +180,50 @@ describe("createThumbnailProvider", () => {
     ).toHaveBeenCalledWith("blob:mock/0");
     expect(thumbnailer.destroy).toHaveBeenCalledTimes(1);
   });
+
+  it("release() revokes and forgets only the named series", async () => {
+    const revoked: string[] = [];
+    vi.stubGlobal("URL", {
+      createObjectURL: (b: Blob) => `blob:${(b as unknown as { tag: string }).tag}`,
+      revokeObjectURL: (u: string) => revoked.push(u),
+    });
+    try {
+      const source = {
+        getImageIds: async (s: SeriesSummary) => [`${s.seriesInstanceUID}-img`],
+        capabilities: {},
+      };
+      // render is a spy so we can prove B's cache entry survives release() by call
+      // count, not by comparing a URL string — deterministic rendering means A and B
+      // would produce the same URL string whether or not B was wrongly re-rendered.
+      const render = vi.fn(async (id: string) => ({ tag: id }) as unknown as Blob);
+      const thumbnailer = { render, destroy: () => {} };
+      const p = createThumbnailProvider({
+        source: source as never,
+        thumbnailer: thumbnailer as never,
+      });
+      const a = { seriesInstanceUID: "A", modality: "CT", numberOfFrames: 5 };
+      const b = { seriesInstanceUID: "B", modality: "CT", numberOfFrames: 5 };
+      expect(await p.get(a)).toBe("blob:A-img");
+      expect(await p.get(b)).toBe("blob:B-img");
+      const rendersBeforeRelease = render.mock.calls.length;
+
+      p.release(["A"]);
+      expect(revoked).toEqual(["blob:A-img"]);
+
+      // B is still cached: fetching it again does NOT trigger another render.
+      expect(await p.get(b)).toBe("blob:B-img");
+      expect(render.mock.calls.length).toBe(rendersBeforeRelease);
+
+      // A was evicted: fetching it again DOES trigger a fresh render.
+      expect(await p.get(a)).toBe("blob:A-img");
+      expect(render.mock.calls.length).toBe(rendersBeforeRelease + 1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("release() ignores unknown series uids", () => {
+    const p = createThumbnailProvider({ source: { capabilities: {} } as never });
+    expect(() => p.release(["nope"])).not.toThrow();
+  });
 });

@@ -6,6 +6,7 @@ import type {
   DataSourceCapabilities,
 } from "../datasource";
 import { buildWadoRsImageId } from "../imageIds";
+import { orderStudyGroups } from "../study-order";
 
 const TAG = {
   STUDY_UID: "0020000D",
@@ -17,6 +18,10 @@ const TAG = {
   INSTANCE_NUMBER: "00200013",
   ROWS: "00280010",
   NUMBER_OF_FRAMES: "00280008",
+  STUDY_DATE: "00080020",
+  STUDY_DESCRIPTION: "00081030",
+  PATIENT_NAME: "00100010",
+  PATIENT_ID: "00100020",
 } as const;
 
 function first(obj: Record<string, unknown>, tag: string): string {
@@ -24,6 +29,15 @@ function first(obj: Record<string, unknown>, tag: string): string {
   return String(entry?.Value?.[0] ?? "");
 }
 const num = (obj: Record<string, unknown>, tag: string) => Number(first(obj, tag)) || 0;
+
+/** Read a Person Name tag, reducing it to its Alphabetic component group. */
+function personName(obj: Record<string, unknown>, tag: string): string {
+  const v = (obj?.[tag] as { Value?: unknown[] } | undefined)?.Value?.[0];
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "object") return String((v as { Alphabetic?: string }).Alphabetic ?? "");
+  return String(v);
+}
 
 export interface DicomJsonOptions {
   /**
@@ -68,6 +82,15 @@ export class DicomJsonDataSource implements DataSource {
       if (!seriesUid) continue;
       let entry = bySeries.get(seriesUid);
       if (!entry) {
+        const study: NonNullable<SeriesSummary["study"]> = {};
+        const sd = first(inst, TAG.STUDY_DATE);
+        if (sd) study.studyDate = sd;
+        const sdesc = first(inst, TAG.STUDY_DESCRIPTION);
+        if (sdesc) study.studyDescription = sdesc;
+        const pn = personName(inst, TAG.PATIENT_NAME);
+        if (pn) study.patientName = pn;
+        const pid = first(inst, TAG.PATIENT_ID);
+        if (pid) study.patientId = pid;
         entry = {
           summary: {
             seriesInstanceUID: seriesUid,
@@ -75,6 +98,7 @@ export class DicomJsonDataSource implements DataSource {
             modality: first(inst, TAG.MODALITY),
             seriesDescription: first(inst, TAG.SERIES_DESCRIPTION),
             numberOfFrames: 0,
+            study,
           },
           number: num(inst, TAG.SERIES_NUMBER),
           count: 0,
@@ -83,9 +107,11 @@ export class DicomJsonDataSource implements DataSource {
       }
       entry.count += 1;
     }
-    return [...bySeries.values()]
-      .sort((a, b) => a.number - b.number)
-      .map((e) => ({ ...e.summary, numberOfFrames: e.count }));
+    return orderStudyGroups(
+      [...bySeries.values()]
+        .sort((a, b) => a.number - b.number)
+        .map((e) => ({ ...e.summary, numberOfFrames: e.count })),
+    );
   }
 
   async getImageIds(series: SeriesSummary): Promise<string[]> {

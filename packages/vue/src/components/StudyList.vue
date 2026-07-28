@@ -47,9 +47,10 @@
           v-for="s in studies"
           :key="s.studyInstanceUID"
           class="studylist__row"
-          tabindex="0"
-          @click="$emit('open', s.studyInstanceUID)"
-          @keydown.enter="$emit('open', s.studyInstanceUID)"
+          :class="{ 'studylist__row--open': isOpen(s.studyInstanceUID) }"
+          :tabindex="isOpen(s.studyInstanceUID) ? -1 : 0"
+          @click="!isOpen(s.studyInstanceUID) && $emit('open', s.studyInstanceUID)"
+          @keydown.enter="!isOpen(s.studyInstanceUID) && $emit('open', s.studyInstanceUID)"
         >
           <td>{{ s.patientName }}</td>
           <td>{{ s.studyDate }}</td>
@@ -69,7 +70,7 @@ import { computed, reactive, ref } from "vue";
 import type { DataSource, StudyQuery, StudySummary } from "@orbidicom/core";
 import { t, dir, getLang } from "../i18n";
 
-const props = defineProps<{ source: DataSource }>();
+const props = defineProps<{ source: DataSource; openUids?: string[] }>();
 defineEmits<{ open: [studyInstanceUID: string] }>();
 
 const layoutDir = computed(() => dir(getLang()));
@@ -83,6 +84,8 @@ const canSearch = computed(
   () =>
     !!props.source.capabilities?.studySearch && typeof props.source.searchStudies === "function",
 );
+
+const isOpen = (uid: string) => !!props.openUids?.includes(uid);
 
 /** Only forward the filters the user actually filled in (empty strings dropped). */
 function cleanQuery(): StudyQuery {
@@ -198,5 +201,12 @@ async function run() {
 .studylist__row:focus-visible {
   background: color-mix(in srgb, var(--accent-strong) 16%, transparent);
   outline: none;
+}
+.studylist__row--open {
+  opacity: 0.45;
+  cursor: default;
+}
+.studylist__row--open:hover {
+  background: transparent;
 }
 </style>

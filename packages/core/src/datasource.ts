@@ -10,6 +10,19 @@ export interface SeriesSummary {
    * DICOM modality (e.g. NIfTI), so the viewer can still offer MPR / 3D for it.
    */
   volumetric?: boolean;
+  /**
+   * Study-level facts, for grouping and labeling the series rail. Repeated on
+   * every series of the same study; sources fill in whatever they have. Absent
+   * for single-study sources (local files, NIfTI), which never group.
+   */
+  study?: {
+    /** Raw DICOM DA string, e.g. "20240115". */
+    studyDate?: string;
+    studyDescription?: string;
+    /** Already reduced to its Alphabetic component group. */
+    patientName?: string;
+    patientId?: string;
+  };
 }
 
 export interface InstanceMetadata {

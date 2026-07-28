@@ -5,6 +5,8 @@ import { createThumbnailer, type Thumbnailer } from "./cornerstone/thumbnail";
 /** Resolves a stable preview URL (or null) for a series, cheaply and at most once. */
 export interface ThumbnailProvider {
   get(series: SeriesSummary): Promise<string | null>;
+  /** Revoke and forget previews for these series (e.g. their study was closed). */
+  release(seriesUids: string[]): void;
   destroy(): void;
 }
 
@@ -131,6 +133,15 @@ export function createThumbnailProvider(opts: ThumbnailProviderOptions): Thumbna
       const p = resolve(series).finally(() => inflight.delete(key));
       inflight.set(key, p);
       return p;
+    },
+    release(seriesUids: string[]) {
+      for (const key of seriesUids) {
+        const v = cache.get(key);
+        if (typeof v === "string") URL.revokeObjectURL(v);
+        cache.delete(key);
+      }
+      // In-flight resolutions are left alone: `store()` will write them into a
+      // cache nobody is asking about, and the next get() re-resolves cleanly.
     },
     destroy() {
       if (destroyed) return;
