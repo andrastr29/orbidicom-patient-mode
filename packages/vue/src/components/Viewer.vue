@@ -411,6 +411,12 @@ const props = defineProps<{
  * the open set, not only their own prop writes.
  */
 const emit = defineEmits<{ "update:studyUids": [string[]] }>();
+// Kicked off at setup, not in onMounted: the studyUids watcher is live from setup
+// and can reach loadIntoCell -> createStack before onMounted's await would have
+// resolved, building a viewport against an uninitialised Cornerstone. Everything
+// that touches a viewport awaits this first. Idempotent by construction — one
+// promise per component, started once.
+const csReady = initCornerstone();
 const series = ref<SeriesSummary[]>([]);
 // One shared preview provider for the rail (LRU-cached, lazy). Cheap to create —
 // it allocates no DOM/viewport until a series actually needs a client render.
@@ -1189,6 +1195,13 @@ async function loadIntoCell(i: number, si: number) {
 
   try {
     if (imageIds.length) {
+      // The single choke point for viewport creation: applyInitialLayout,
+      // selectSeries and ensureSomethingShown all funnel through here, and the
+      // studyUids watcher can reach any of them before Cornerstone is ready.
+      await csReady;
+      // csReady is a new suspension point, so re-check the load token before
+      // building anything into a cell that may have been blanked meanwhile.
+      if (token !== tokens[i]) return;
       await ensureStack(i).setStack(imageIds);
       void refreshMeta(i);
     } else {
@@ -1515,7 +1528,7 @@ onMounted(async () => {
   unsubscribeMeasurements = onMeasurementsChanged(() => annotationVersion.value++);
   stopHistory = startAnnotationHistory();
   unsubscribeHistory = annotationHistory.subscribe(() => historyVersion.value++);
-  await initCornerstone();
+  await csReady;
   // The initial load is just the first reconciliation: one getSeries() for the
   // whole prop, ordered newest-study-first, hung by the protocol because the
   // session is empty. Going through syncOpenStudies (rather than assigning

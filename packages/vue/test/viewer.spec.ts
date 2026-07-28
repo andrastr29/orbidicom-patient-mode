@@ -26,6 +26,7 @@ const {
   collectMeasurements,
   deleteAnnotation,
   initCornerstone,
+  createStack,
   mprHandle,
   createMprView,
   annotationHistory,
@@ -45,6 +46,7 @@ const {
     // Hoisted so a test can hold Cornerstone init open and let the studyUids
     // watcher run before onMounted resumes.
     initCornerstone: vi.fn().mockResolvedValue(undefined),
+    createStack: vi.fn(() => stack),
     annotationHistory: {
       undo: vi.fn(() => false),
       redo: vi.fn(() => false),
@@ -97,7 +99,7 @@ vi.mock("@orbidicom/core", () => {
   return {
     initCornerstone,
     setPrimaryTool,
-    createStack: vi.fn(() => stack),
+    createStack,
     readImageMetadata: vi.fn(async () => ({ patientName: "TEST^PATIENT", patientId: "ID1" })),
     readMetadataGroups: vi.fn(async () => [
       { id: "patient", rows: [{ label: "Patient Name", value: "TEST PATIENT" }] },
@@ -1249,6 +1251,31 @@ describe("multi-study lifecycle", () => {
     await w.setProps({ studyUids: ["OLD"] });
     await flushPromises();
     expect(uidsOf(w)).toEqual(["O1"]);
+  });
+
+  // Final-review 4 — the studyUids watcher is live from setup, so it can reach
+  // loadIntoCell -> createStack before onMounted's initCornerstone() resolves.
+  // A real browser would build a viewport against an uninitialised library.
+  it("never builds a viewport before Cornerstone init resolves", async () => {
+    let ready!: () => void;
+    initCornerstone.mockReturnValueOnce(
+      new Promise<void>((r) => {
+        ready = r;
+      }),
+    );
+    createStack.mockClear();
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD"] },
+    });
+    // The watcher fires (and runs a whole add) while init is still pending.
+    await w.setProps({ studyUids: ["NEW"] });
+    await flushPromises();
+    expect(createStack).not.toHaveBeenCalled();
+
+    ready();
+    await flushPromises();
+    expect(createStack).toHaveBeenCalled();
+    expect(uidsOf(w)).toEqual(["N1"]);
   });
 
   // Round-2 residual — replacing one study with another must not leave a black
