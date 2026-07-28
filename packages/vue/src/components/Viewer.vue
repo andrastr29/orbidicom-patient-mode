@@ -1518,9 +1518,30 @@ async function applyInitialLayout() {
   cellCount.value = snapLayout(cc);
   activeCell.value = 0;
   const cells = Math.min(cellCount.value, assignments.length, MAX_CELLS);
+  // Resolve the protocol's positional picks to series UIDs before loading any of
+  // them. `assignments` is computed once but consumed across awaits, and a
+  // concurrent addStudies reorders series.value — remapCells repairs cells that
+  // are already loaded, but it cannot touch an index this loop hasn't reached, so
+  // a positional replay would hang a different study's series than the protocol
+  // chose.
+  const picks: (string | null)[] = [];
   for (let c = 0; c < cells; c++) {
-    if (assignments[c] >= 0) await loadIntoCell(c, assignments[c]);
+    const s = assignments[c] >= 0 ? series.value[assignments[c]] : undefined;
+    picks.push(s?.seriesInstanceUID ?? null);
   }
+  // Start every cell in the same tick instead of sequentially. loadIntoCell writes
+  // seriesIdx synchronously, so this makes `displayedSeriesIdx` complete before
+  // Vue's first flush — the rail materializes each study group's collapse default
+  // exactly once, at that flush, and a sequential loop left cells >= 1 still empty
+  // then, permanently collapsing a study whose only on-screen series was headed
+  // for a later cell.
+  const pos = new Map(series.value.map((s, i) => [s.seriesInstanceUID, i]));
+  await Promise.all(
+    picks.map((uid, c) => {
+      const si = uid == null ? undefined : pos.get(uid);
+      return si == null ? undefined : loadIntoCell(c, si);
+    }),
+  );
 }
 
 onUnmounted(() => {

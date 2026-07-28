@@ -709,6 +709,21 @@ describe("multi-study lifecycle", () => {
       searchStudies: async () => [],
     };
   }
+  // One study with four image series, for the grid-protocol cases.
+  function fourSeriesSource() {
+    const byStudy: Record<string, ReturnType<typeof mk>[]> = {
+      OLD: ["A", "B", "C", "D"].map((u) => mk(`O${u}`, "OLD", "20240101")),
+      NEW: [mk("N1", "NEW", "20260314")],
+    };
+    return {
+      capabilities: { downloadArchive: false, multiStudy: true, studySearch: true },
+      getSeries: async (uids: string[]) => uids.flatMap((u) => byStudy[u] ?? []),
+      getImageIds: async (s: { seriesInstanceUID: string }) =>
+        Array.from({ length: 3 }, (_, i) => `${s.seriesInstanceUID}-${i}`),
+      searchStudies: async () => [],
+    };
+  }
+
   const rail = (w: ReturnType<typeof mount>) => w.findComponent({ name: "SeriesRail" });
   const uidsOf = (w: ReturnType<typeof mount>) =>
     (rail(w).props("series") as { seriesInstanceUID: string }[]).map((s) => s.seriesInstanceUID);
@@ -1131,6 +1146,61 @@ describe("multi-study lifecycle", () => {
     await flushPromises();
     // No uids to claim the session with, so the source decides what it holds.
     expect(uidsOf(w)).toEqual(["N1", "M1", "O1"]);
+  });
+
+  // Final-review 1 — the rail materializes each group's collapse default exactly
+  // once, at Vue's first flush. A sequential load loop left cells >= 1 empty then,
+  // so a study whose only on-screen series was headed for a later cell got frozen
+  // collapsed for the session.
+  it("leaves every study's group expanded when the protocol hangs them in different cells", async () => {
+    const twoUp = () => ({ cellCount: 2, assignments: [0, 1] });
+    const w = mount(Viewer, {
+      props: {
+        source: twoStudySource() as never,
+        studyUids: ["OLD", "NEW"],
+        hangingProtocol: twoUp as never,
+      },
+    });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1", "O1"]);
+    expect(rail(w).props("displayed")).toEqual([0, 1]);
+
+    const toggles = w.findAll(".rail__group-toggle");
+    expect(toggles).toHaveLength(2);
+    expect(toggles.map((b) => b.attributes("aria-expanded"))).toEqual(["true", "true"]);
+    // Both groups' rows are on screen, not just the newest study's.
+    expect(w.findAll(".rail__item")).toHaveLength(2);
+  });
+
+  // Final-review 2 — `assignments` holds positional indices computed once and
+  // consumed across awaits; a concurrent add reorders series.value, and remapCells
+  // cannot repair an index the loop has not reached yet.
+  it("hangs the protocol's chosen series even when an add reorders the list mid-load", async () => {
+    const src = fourSeriesSource();
+    let open!: () => void;
+    const gate = new Promise<void>((r) => {
+      open = r;
+    });
+    const inner = src.getImageIds;
+    src.getImageIds = async (s: { seriesInstanceUID: string }) => {
+      await gate;
+      return inner(s);
+    };
+    const grid = () => ({ cellCount: 4, assignments: [0, 1, 2, 3] });
+    const w = mount(Viewer, {
+      props: { source: src as never, studyUids: ["OLD"], hangingProtocol: grid as never },
+    });
+    await flushPromises();
+    // NEW sorts above OLD, so every OLD index shifts by one mid-load.
+    await w.setProps({ studyUids: ["OLD", "NEW"] });
+    await flushPromises();
+    open();
+    await flushPromises();
+
+    expect(uidsOf(w)).toEqual(["N1", "OA", "OB", "OC", "OD"]);
+    // The four cells still hold OLD's four series, in the protocol's order — not
+    // N1 and a replay of the shifted positions.
+    expect(rail(w).props("displayed")).toEqual([1, 2, 3, 4]);
   });
 
   // Round-2 residual — replacing one study with another must not leave a black
