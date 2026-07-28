@@ -2,6 +2,7 @@
 // t() read inside a template/render or computed re-renders when setLang() runs —
 // letting the in-app language switcher change the UI live.
 import { ref } from "vue";
+import { dicomDate } from "@orbidicom/core";
 
 // Exported for the key-parity test (not re-exported by the package index, so it
 // stays out of the public API).
@@ -58,6 +59,10 @@ export const STRINGS = {
     cancel: "Cancel",
     clear: "Clear",
     close: "Close",
+    addStudy: "Add study",
+    closeStudy: "Close study",
+    confirmCloseStudy: "Close this study? Its measurements and key images will be discarded.",
+    studyN: "Study {n}",
     pdfError: "Couldn't display this PDF.",
     srError: "Couldn't display this report.",
     srUnsupported: "[unsupported content]",
@@ -150,6 +155,10 @@ export const STRINGS = {
     cancel: "İptal",
     clear: "Temizle",
     close: "Kapat",
+    addStudy: "Tetkik ekle",
+    closeStudy: "Tetkiki kapat",
+    confirmCloseStudy: "Bu tetkik kapatılsın mı? Ölçümleri ve anahtar görüntüleri silinecek.",
+    studyN: "Tetkik {n}",
     pdfError: "Bu PDF görüntülenemedi.",
     srError: "Bu rapor görüntülenemedi.",
     srUnsupported: "[desteklenmeyen içerik]",
@@ -243,6 +252,11 @@ export const STRINGS = {
     cancel: "Abbrechen",
     clear: "Löschen",
     close: "Schließen",
+    addStudy: "Untersuchung hinzufügen",
+    closeStudy: "Untersuchung schließen",
+    confirmCloseStudy:
+      "Diese Untersuchung schließen? Ihre Messungen und Schlüsselbilder werden gelöscht.",
+    studyN: "Untersuchung {n}",
     pdfError: "Dieses PDF konnte nicht angezeigt werden.",
     srError: "Dieser Bericht konnte nicht angezeigt werden.",
     srUnsupported: "[nicht unterstützter Inhalt]",
@@ -336,6 +350,10 @@ export const STRINGS = {
     cancel: "Cancelar",
     clear: "Borrar",
     close: "Cerrar",
+    addStudy: "Añadir estudio",
+    closeStudy: "Cerrar estudio",
+    confirmCloseStudy: "¿Cerrar este estudio? Se borrarán sus mediciones e imágenes clave.",
+    studyN: "Estudio {n}",
     pdfError: "No se pudo mostrar este PDF.",
     srError: "No se pudo mostrar este informe.",
     srUnsupported: "[contenido no compatible]",
@@ -430,6 +448,10 @@ export const STRINGS = {
     cancel: "Annuler",
     clear: "Effacer",
     close: "Fermer",
+    addStudy: "Ajouter un examen",
+    closeStudy: "Fermer l'examen",
+    confirmCloseStudy: "Fermer cet examen ? Ses mesures et images clés seront effacées.",
+    studyN: "Examen {n}",
     pdfError: "Impossible d'afficher ce PDF.",
     srError: "Impossible d'afficher ce compte rendu.",
     srUnsupported: "[contenu non pris en charge]",
@@ -524,6 +546,11 @@ export const STRINGS = {
     cancel: "Annulla",
     clear: "Cancella",
     close: "Chiudi",
+    addStudy: "Aggiungi studio",
+    closeStudy: "Chiudi studio",
+    confirmCloseStudy:
+      "Chiudere questo studio? Le sue misurazioni e immagini chiave verranno cancellate.",
+    studyN: "Studio {n}",
     pdfError: "Impossibile visualizzare questo PDF.",
     srError: "Impossibile visualizzare questo referto.",
     srUnsupported: "[contenuto non supportato]",
@@ -618,6 +645,10 @@ export const STRINGS = {
     cancel: "Cancelar",
     clear: "Limpar",
     close: "Fechar",
+    addStudy: "Adicionar estudo",
+    closeStudy: "Fechar estudo",
+    confirmCloseStudy: "Fechar este estudo? As suas medições e imagens principais serão apagadas.",
+    studyN: "Estudo {n}",
     pdfError: "Não foi possível exibir este PDF.",
     srError: "Não foi possível exibir este relatório.",
     srUnsupported: "[conteúdo não suportado]",
@@ -711,6 +742,11 @@ export const STRINGS = {
     cancel: "Отмена",
     clear: "Очистить",
     close: "Закрыть",
+    addStudy: "Добавить исследование",
+    closeStudy: "Закрыть исследование",
+    confirmCloseStudy:
+      "Закрыть это исследование? Его измерения и ключевые изображения будут удалены.",
+    studyN: "Исследование {n}",
     pdfError: "Не удалось отобразить этот PDF.",
     srError: "Не удалось отобразить этот отчёт.",
     srUnsupported: "[неподдерживаемое содержимое]",
@@ -804,6 +840,10 @@ export const STRINGS = {
     cancel: "取消",
     clear: "清除",
     close: "关闭",
+    addStudy: "添加检查",
+    closeStudy: "关闭检查",
+    confirmCloseStudy: "关闭此检查？其测量和关键图像将被清除。",
+    studyN: "检查 {n}",
     pdfError: "无法显示此 PDF。",
     srError: "无法显示此报告。",
     srUnsupported: "［不支持的内容］",
@@ -896,6 +936,10 @@ export const STRINGS = {
     cancel: "キャンセル",
     clear: "消去",
     close: "閉じる",
+    addStudy: "検査を追加",
+    closeStudy: "検査を閉じる",
+    confirmCloseStudy: "この検査を閉じますか？計測とキー画像は消去されます。",
+    studyN: "検査 {n}",
     pdfError: "この PDF を表示できませんでした。",
     srError: "このレポートを表示できませんでした。",
     srUnsupported: "［非対応コンテンツ］",
@@ -989,6 +1033,10 @@ export const STRINGS = {
     cancel: "취소",
     clear: "지우기",
     close: "닫기",
+    addStudy: "검사 추가",
+    closeStudy: "검사 닫기",
+    confirmCloseStudy: "이 검사를 닫으시겠습니까? 측정과 주요 영상이 지워집니다.",
+    studyN: "검사 {n}",
     pdfError: "이 PDF를 표시할 수 없습니다.",
     srError: "이 보고서를 표시할 수 없습니다.",
     srUnsupported: "[지원되지 않는 콘텐츠]",
@@ -1081,6 +1129,10 @@ export const STRINGS = {
     cancel: "रद्द करें",
     clear: "साफ़ करें",
     close: "बंद करें",
+    addStudy: "अध्ययन जोड़ें",
+    closeStudy: "अध्ययन बंद करें",
+    confirmCloseStudy: "यह अध्ययन बंद करें? इसके माप और मुख्य छवियां हटा दी जाएंगी।",
+    studyN: "अध्ययन {n}",
     pdfError: "यह PDF प्रदर्शित नहीं किया जा सका।",
     srError: "यह रिपोर्ट प्रदर्शित नहीं की जा सकी।",
     srUnsupported: "[असमर्थित सामग्री]",
@@ -1173,6 +1225,10 @@ export const STRINGS = {
     cancel: "Batal",
     clear: "Hapus",
     close: "Tutup",
+    addStudy: "Tambah studi",
+    closeStudy: "Tutup studi",
+    confirmCloseStudy: "Tutup studi ini? Pengukuran dan gambar kuncinya akan dihapus.",
+    studyN: "Studi {n}",
     pdfError: "Tidak dapat menampilkan PDF ini.",
     srError: "Tidak dapat menampilkan laporan ini.",
     srUnsupported: "[konten tidak didukung]",
@@ -1265,6 +1321,10 @@ export const STRINGS = {
     cancel: "Annuleren",
     clear: "Wissen",
     close: "Sluiten",
+    addStudy: "Onderzoek toevoegen",
+    closeStudy: "Onderzoek sluiten",
+    confirmCloseStudy: "Dit onderzoek sluiten? De metingen en sleutelbeelden worden gewist.",
+    studyN: "Onderzoek {n}",
     pdfError: "Kan deze PDF niet weergeven.",
     srError: "Kan dit rapport niet weergeven.",
     srUnsupported: "[niet-ondersteunde inhoud]",
@@ -1359,6 +1419,10 @@ export const STRINGS = {
     cancel: "Anuluj",
     clear: "Wyczyść",
     close: "Zamknij",
+    addStudy: "Dodaj badanie",
+    closeStudy: "Zamknij badanie",
+    confirmCloseStudy: "Zamknąć to badanie? Jego pomiary i obrazy kluczowe zostaną usunięte.",
+    studyN: "Badanie {n}",
     pdfError: "Nie można wyświetlić tego pliku PDF.",
     srError: "Nie można wyświetlić tego raportu.",
     srUnsupported: "[nieobsługiwana zawartość]",
@@ -1452,6 +1516,10 @@ export const STRINGS = {
     cancel: "إلغاء",
     clear: "مسح",
     close: "إغلاق",
+    addStudy: "إضافة دراسة",
+    closeStudy: "إغلاق الدراسة",
+    confirmCloseStudy: "إغلاق هذه الدراسة؟ سيتم مسح قياساتها وصورها الرئيسية.",
+    studyN: "دراسة {n}",
     pdfError: "تعذّر عرض ملف PDF هذا.",
     srError: "تعذّر عرض هذا التقرير.",
     srUnsupported: "[محتوى غير مدعوم]",
@@ -1544,6 +1612,10 @@ export const STRINGS = {
     cancel: "انصراف",
     clear: "پاک‌کردن",
     close: "بستن",
+    addStudy: "افزودن مطالعه",
+    closeStudy: "بستن مطالعه",
+    confirmCloseStudy: "این مطالعه بسته شود؟ اندازه‌گیری‌ها و تصاویر کلیدی آن پاک خواهند شد.",
+    studyN: "مطالعه {n}",
     pdfError: "نمایش این PDF ممکن نشد.",
     srError: "نمایش این گزارش ممکن نشد.",
     srUnsupported: "[محتوای پشتیبانی‌نشده]",
@@ -1637,6 +1709,10 @@ export const STRINGS = {
     cancel: "বাতিল",
     clear: "মুছুন",
     close: "বন্ধ করুন",
+    addStudy: "স্টাডি যোগ করুন",
+    closeStudy: "স্টাডি বন্ধ করুন",
+    confirmCloseStudy: "এই স্টাডি বন্ধ করবেন? এর পরিমাপ ও মূল ছবি মুছে যাবে।",
+    studyN: "স্টাডি {n}",
     pdfError: "এই PDF প্রদর্শন করা যায়নি।",
     srError: "এই রিপোর্ট প্রদর্শন করা যায়নি।",
     srUnsupported: "[অসমর্থিত বিষয়বস্তু]",
@@ -1730,6 +1806,10 @@ export const STRINGS = {
     cancel: "Hủy",
     clear: "Xóa",
     close: "Đóng",
+    addStudy: "Thêm ca chụp",
+    closeStudy: "Đóng ca chụp",
+    confirmCloseStudy: "Đóng ca chụp này? Các phép đo và ảnh chính của nó sẽ bị xóa.",
+    studyN: "Ca chụp {n}",
     pdfError: "Không thể hiển thị tệp PDF này.",
     srError: "Không thể hiển thị báo cáo này.",
     srUnsupported: "[nội dung không được hỗ trợ]",
@@ -1823,6 +1903,11 @@ export const STRINGS = {
     cancel: "Скасувати",
     clear: "Очистити",
     close: "Закрити",
+    addStudy: "Додати дослідження",
+    closeStudy: "Закрити дослідження",
+    confirmCloseStudy:
+      "Закрити це дослідження? Його вимірювання та ключові зображення буде видалено.",
+    studyN: "Дослідження {n}",
     pdfError: "Не вдалося відобразити цей PDF.",
     srError: "Не вдалося відобразити цей звіт.",
     srUnsupported: "[непідтримуваний вміст]",
@@ -1949,4 +2034,34 @@ export function localeName(code: string, lang: string = current.value): string {
     /* Intl.DisplayNames unsupported — fall back to the endonym below. */
   }
   return LOCALES.find((l) => l.code === code)?.label ?? code;
+}
+
+// One Intl.DateTimeFormat per display language, built lazily (same pattern as
+// the localeName display-names cache above).
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A DICOM DA string ("YYYYMMDD") rendered in the active UI language — e.g. with
+ * English active, "20260314" is "Mar 14, 2026"; with Japanese, "2026年3月14日".
+ * Parsing is core's `dicomDate` (which also accepts the wadouri loader's
+ * pre-parsed form); formatting stays here so core keeps no locale state.
+ *
+ * Falls back to the ISO "YYYY-MM-DD" string when the value isn't a DICOM date or
+ * `Intl` is unavailable, and to "" when there's no date at all.
+ */
+export function formatDicomDate(da?: string, lang: string = current.value): string {
+  const iso = dicomDate(da);
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso; // not a date we can format — show it as-is
+  try {
+    let fmt = dateFormats.get(lang);
+    if (!fmt) {
+      fmt = new Intl.DateTimeFormat(lang, { year: "numeric", month: "short", day: "numeric" });
+      dateFormats.set(lang, fmt);
+    }
+    return fmt.format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  } catch {
+    return iso;
+  }
 }

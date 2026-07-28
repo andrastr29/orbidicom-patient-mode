@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { defineComponent, h, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
-import { t, setLang, getLang, LOCALES, STRINGS, localeName, isRtl, dir } from "../src/i18n";
+import {
+  t,
+  setLang,
+  getLang,
+  LOCALES,
+  STRINGS,
+  localeName,
+  isRtl,
+  dir,
+  formatDicomDate,
+} from "../src/i18n";
 
 describe("i18n", () => {
   beforeEach(() => setLang("en"));
@@ -113,5 +123,27 @@ describe("i18n", () => {
     setLang("de");
     await nextTick();
     expect(w.text()).toBe("Abbrechen");
+  });
+});
+
+describe("formatDicomDate", () => {
+  it("formats a DICOM DA string for the active locale", () => {
+    setLang("en");
+    const out = formatDicomDate("20260314");
+    expect(out).not.toBe("20260314"); // not the raw DA string
+    expect(out).toMatch(/2026/);
+  });
+
+  it("renders the same instant differently in a different locale", () => {
+    expect(formatDicomDate("20260314", "en")).not.toBe(formatDicomDate("20260314", "ja"));
+  });
+
+  it("falls back to the ISO string when the value is not a DICOM date", () => {
+    expect(formatDicomDate("not-a-date")).toBe("not-a-date");
+  });
+
+  it("returns an empty string for a missing date", () => {
+    expect(formatDicomDate(undefined)).toBe("");
+    expect(formatDicomDate("")).toBe("");
   });
 });
