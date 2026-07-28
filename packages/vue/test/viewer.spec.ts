@@ -114,6 +114,7 @@ vi.mock("@orbidicom/core", () => {
     createMprView,
     createThumbnailProvider: vi.fn(() => ({
       get: vi.fn().mockResolvedValue(null),
+      release: vi.fn(),
       destroy: vi.fn(),
     })),
     isVolumeCapable: (_s: unknown, n: number) => n >= 16,

@@ -40,7 +40,7 @@ describe("SeriesRail", () => {
   });
 
   function providerStub(url: string | null) {
-    return { get: vi.fn(async () => url), destroy: vi.fn() };
+    return { get: vi.fn(async () => url), release: vi.fn(), destroy: vi.fn() };
   }
 
   it("shows the rendered thumbnail once the provider resolves a URL", async () => {
@@ -57,6 +57,7 @@ describe("SeriesRail", () => {
     let resolve!: (v: string | null) => void;
     const provider = {
       get: vi.fn(() => new Promise<string | null>((r) => (resolve = r))),
+      release: vi.fn(),
       destroy: vi.fn(),
     };
     // A single series, so the one pending get() is the one we resolve.
