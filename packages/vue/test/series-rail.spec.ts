@@ -412,6 +412,21 @@ describe("multi-study grouping", () => {
     expect(w.findAll(".rail__item").length).toBe(3);
   });
 
+  // The mobile styles dim a collapsed prior and hide its close button, and both
+  // hang off this modifier class. jsdom applies no media queries, so the styling
+  // itself can't be asserted — but the hook can, which is what keeps it from
+  // silently detaching from the collapse state it is supposed to reflect.
+  it("marks collapsed groups with the modifier class the mobile styles hook", async () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    const collapsed = () =>
+      w.findAll(".rail__group").map((h) => h.classes().includes("rail__group--collapsed"));
+    // Group 1 is expanded by default, group 2 collapsed.
+    expect(collapsed()).toEqual([false, true]);
+
+    await w.findAll(".rail__group-toggle")[1].trigger("click");
+    expect(collapsed()).toEqual([false, false]);
+  });
+
   it("expands a non-first group that holds a displayed series", () => {
     // A hanging protocol loaded the *older* study into a cell: its group must not
     // start collapsed, or the row the user is looking at would be invisible.

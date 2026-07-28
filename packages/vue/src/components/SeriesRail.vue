@@ -1,7 +1,11 @@
 <template>
   <div class="rail">
     <template v-for="(g, gi) in groups" :key="g.uid || gi">
-      <div v-if="grouped" class="rail__group">
+      <div
+        v-if="grouped"
+        class="rail__group"
+        :class="{ 'rail__group--collapsed': !isExpanded(g, gi) }"
+      >
         <button
           class="rail__group-toggle"
           type="button"
@@ -578,12 +582,19 @@ onUnmounted(() => io?.disconnect());
      vertical layout's 8px padding (mobile uses 6px). Instead render each group
      header as its own narrow, non-shrinking tile in the flow, right before that
      study's rows — a vertical divider between studies rather than a banner. */
+  /* Two zones, not a loose column: the label spans the top row, the count and
+     the close button share the bottom one. Grid gets this with no extra wrapper
+     — the three children are already direct siblings. `.rail` never sets
+     align-items, so the tile stretches to the height of the series tiles beside
+     it, and the 1fr top row pushes the bottom row to the floor. */
   .rail__group {
     flex: none;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    width: 84px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr auto;
+    gap: 4px 2px;
+    /* Narrower than the 76px series tile it introduces, rather than wider. */
+    width: 68px;
     padding: 6px;
     border-bottom: 0;
     border-right: 1px solid var(--border);
@@ -591,22 +602,61 @@ onUnmounted(() => io?.disconnect());
     top: auto;
   }
   .rail__group-toggle {
+    grid-column: 1 / -1;
+    align-self: start;
+    /* Align the chevron to the first line of the title, not to the middle of a
+       two-line one. */
+    align-items: flex-start;
     width: 100%;
+  }
+  .rail__group-chev {
+    width: 12px;
+    height: 12px;
+    margin-top: 1px;
   }
   .rail__group-lines {
     width: 100%;
   }
-  .rail__group-title,
+  /* The tile is as tall as a series tile and mostly empty, so spend a second
+     line on the label rather than truncating "HRCT THORAX" to "HRCT T…".
+     Desktop keeps its single-line nowrap: there the rail is a narrow vertical
+     column and height, not width, is the scarce axis. */
+  .rail__group-title {
+    max-width: 100%;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.25;
+  }
   .rail__group-sub {
     max-width: 100%;
   }
   .rail__group-count {
+    grid-column: 1;
+    justify-self: start;
+    align-self: end;
     margin-inline-start: 0;
-    margin-top: 2px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: var(--elevated);
   }
   .rail__group-close {
-    align-self: flex-end;
-    margin-top: 2px;
+    grid-column: 2;
+    justify-self: end;
+    align-self: end;
+    width: 28px;
+    height: 28px;
+  }
+  /* A collapsed prior recedes so the study being read stays dominant. Hiding
+     close also removes the accidental-tap risk on a target whose whole job is
+     "tap me to expand". */
+  .rail__group--collapsed {
+    opacity: 0.65;
+  }
+  .rail__group--collapsed .rail__group-close {
+    display: none;
   }
 }
 </style>
