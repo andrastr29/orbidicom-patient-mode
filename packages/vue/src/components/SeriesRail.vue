@@ -579,53 +579,63 @@ onUnmounted(() => io?.disconnect());
 
   /* A sticky row-header doesn't work once the rail is a horizontal strip: there's
      no "above the rows" to stick to, and the desktop -8px offset assumes the
-     vertical layout's 8px padding (mobile uses 6px). Instead render each group
-     header as its own narrow, non-shrinking tile in the flow, right before that
-     study's rows — a vertical divider between studies rather than a banner. */
-  /* Two zones, not a loose column: the label spans the top row, the count and
-     the close button share the bottom one. Grid gets this with no extra wrapper
-     — the three children are already direct siblings. `.rail` never sets
-     align-items, so the tile stretches to the height of the series tiles beside
-     it, and the 1fr top row pushes the bottom row to the floor. */
+     vertical layout's 8px padding (mobile uses 6px). Instead each group header is
+     its own narrow, non-shrinking tile in the flow, right before that study's
+     rows — a vertical gutter between studies rather than a banner.
+
+     Its content is one centred block, not pinned to opposite edges: `.rail` sets
+     no align-items, so the tile stretches to the height of the series tiles beside
+     it, and spreading three small elements across that height only hollows it out.
+     Centring keeps them together, and the close button leaves the flow entirely so
+     it can never pull the block apart. */
   .rail__group {
     flex: none;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: 1fr auto;
-    gap: 4px 2px;
-    /* Narrower than the 76px series tile it introduces, rather than wider. */
-    width: 68px;
-    padding: 6px;
+    position: relative;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    /* Compact enough to read as a gutter between studies rather than a tile
+       competing with the 76px series tiles. */
+    width: 56px;
+    padding: 6px 5px;
+    /* A step darker than the rail, so the header recedes instead of reading as
+       a card with nothing in it. */
+    background: var(--bg);
     border-bottom: 0;
     border-right: 1px solid var(--border);
-    position: static;
     top: auto;
   }
+  /* Chevron on its own line: at 56px wide, sitting it beside the title would
+     leave under 30px for the label and truncate it right back to "HRCT T…". */
   .rail__group-toggle {
-    grid-column: 1 / -1;
-    align-self: start;
-    /* Align the chevron to the first line of the title, not to the middle of a
-       two-line one. */
+    flex-direction: column;
     align-items: flex-start;
+    gap: 2px;
     width: 100%;
   }
   .rail__group-chev {
     width: 12px;
     height: 12px;
-    margin-top: 1px;
   }
   .rail__group-lines {
     width: 100%;
   }
-  /* The tile is as tall as a series tile and mostly empty, so spend a second
-     line on the label rather than truncating "HRCT THORAX" to "HRCT T…".
-     Desktop keeps its single-line nowrap: there the rail is a narrow vertical
-     column and height, not width, is the scarce axis. */
+  /* Wrap rather than truncate "HRCT THORAX" to "HRCT T…" — the tile has height to
+     spare, and width is what's scarce. Desktop keeps its single-line nowrap: there
+     the rail is a narrow vertical column and height is the scarce axis instead.
+     Dropping to 10px and shedding the uppercase tracking buys ~2 characters per
+     line, which is the difference between "ABDOMEN" fitting and clipping in 46px
+     of content width. `overflow-wrap` is the backstop for a study description with
+     no spaces at all, which would otherwise clip mid-word with no ellipsis. */
   .rail__group-title {
     max-width: 100%;
+    font-size: 10px;
+    letter-spacing: 0;
     white-space: normal;
+    overflow-wrap: anywhere;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     line-height: 1.25;
@@ -633,19 +643,19 @@ onUnmounted(() => io?.disconnect());
   .rail__group-sub {
     max-width: 100%;
   }
+  /* Part of the centred block, directly under the label. No pill: --elevated on
+     --panel is too small a step to read as a badge at 10px, so it only added
+     noise. --hush keeps the count subordinate to the study name. */
   .rail__group-count {
-    grid-column: 1;
-    justify-self: start;
-    align-self: end;
     margin-inline-start: 0;
-    padding: 1px 5px;
-    border-radius: 999px;
-    background: var(--elevated);
+    color: var(--hush);
   }
+  /* Out of the flow, in the corner: closing a study is a deliberate act, not
+     something to weigh equally with the label the user is reading. */
   .rail__group-close {
-    grid-column: 2;
-    justify-self: end;
-    align-self: end;
+    position: absolute;
+    top: 2px;
+    inset-inline-end: 2px;
     width: 28px;
     height: 28px;
   }
