@@ -356,4 +356,32 @@ describe("multi-study grouping", () => {
     // Only the 2 expanded rows resolve; the collapsed study's row is never rendered.
     expect(provider.get).toHaveBeenCalledTimes(2);
   });
+
+  it("keeps a group expanded once displayed/active moves on, instead of re-defaulting it closed", async () => {
+    // Group 2 auto-expands because its series is displayed (rule 2, first render only).
+    const w = mount(SeriesRail, {
+      props: { series: twoStudies, active: 2, displayed: [2] },
+    });
+    expect(w.findAll(".rail__item").length).toBe(3);
+    // The user then looks at group 1: displayed/active moves away from group 2's row.
+    await w.setProps({ active: 0, displayed: [0] });
+    // Group 2 must stay expanded — rule 2 only decided the default, it doesn't keep
+    // re-evaluating on every render and silently collapsing the row the user was
+    // just browsing.
+    expect(w.findAll(".rail__item").length).toBe(3);
+  });
+
+  it("discards a group's collapse state when its study leaves and returns, starting fresh", async () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    // Group 1 starts expanded by default (first group); collapse it.
+    await w.findAll(".rail__group-toggle")[0].trigger("click");
+    expect(w.findAll(".rail__item").length).toBe(0);
+    // The study closes (its series leave `series` entirely)...
+    const old = twoStudies.filter((s) => s.studyInstanceUID === "OLD");
+    await w.setProps({ series: old, active: 0 });
+    // ...and is re-added later. It must start fresh (default-expanded, as the new
+    // first group), not restore the stale collapsed choice from before it left.
+    await w.setProps({ series: twoStudies, active: 0 });
+    expect(w.findAll(".rail__item").length).toBe(2);
+  });
 });

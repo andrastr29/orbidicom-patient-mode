@@ -151,18 +151,47 @@ const groups = computed<Group[]>(() => {
 });
 
 // Collapse state per study UID, owned by the rail and session-scoped. An entry is
-// written once, the first time that study renders, and then never re-defaulted —
-// so appending a study can't reopen a group the user deliberately collapsed.
+// materialized once, the first time that study's group appears in `groups`, by the
+// watcher below — and then never re-defaulted, so neither `displayed`/`active`
+// moving on nor appending another study can reopen or reclose a group the user
+// deliberately toggled. A study that closes and comes back has its UID pruned from
+// `expanded`, so it starts fresh (default-computed again) rather than restoring
+// whatever the user last left it at.
 const expanded = reactive<Record<string, boolean>>({});
 
 const displayedSet = computed(() => new Set(props.displayed ?? [props.active]));
 
+// Seed any group not yet in `expanded` with its default, and drop entries for
+// studies that are no longer present. Must run as a watcher, not inside a computed
+// or render-time function: writing reactive state during render is a side effect
+// Vue explicitly warns against, and a computed re-deriving the default on every
+// access (rather than writing it once) is exactly the bug this replaces — it would
+// silently flip a group's visibility whenever `displayed`/`active` moved on.
+watch(
+  groups,
+  (gs) => {
+    const uids = new Set(gs.map((g) => g.uid));
+    for (const uid of Object.keys(expanded)) {
+      if (!uids.has(uid)) delete expanded[uid];
+    }
+    gs.forEach((g, gi) => {
+      if (expanded[g.uid] === undefined) {
+        // Expand it when it is the newest study (first group), or when any of its
+        // series is on screen — a group that holds the row the user is looking at
+        // must never start hidden.
+        expanded[g.uid] = gi === 0 || g.rows.some((r) => displayedSet.value.has(r.flat));
+      }
+    });
+  },
+  { immediate: true },
+);
+
 function isExpanded(g: Group, gi: number): boolean {
+  // The watcher runs `immediate`ly and synchronously seeds every group before the
+  // first template render, so this fallback is only a defensive default (e.g. a
+  // group added between the watcher's snapshot and a render in the same tick).
   const known = expanded[g.uid];
   if (known !== undefined) return known;
-  // First render of this study. Expand it when it is the newest study (first
-  // group), or when any of its series is on screen — a group that holds the row
-  // the user is looking at must never start hidden.
   return gi === 0 || g.rows.some((r) => displayedSet.value.has(r.flat));
 }
 
