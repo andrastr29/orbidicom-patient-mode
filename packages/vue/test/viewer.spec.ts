@@ -21,37 +21,44 @@ const stack = {
   getViewport: vi.fn(() => null),
 };
 // Hoisted so the vi.mock factory (which Vitest lifts above imports) can read them.
-const { setPrimaryTool, collectMeasurements, mprHandle, createMprView, annotationHistory } =
-  vi.hoisted(() => {
-    const mprHandle = {
-      setVolume: vi.fn().mockResolvedValue(undefined),
-      setWindowLevel: vi.fn(),
-      setPreset: vi.fn(),
+const {
+  setPrimaryTool,
+  collectMeasurements,
+  deleteAnnotation,
+  mprHandle,
+  createMprView,
+  annotationHistory,
+} = vi.hoisted(() => {
+  const mprHandle = {
+    setVolume: vi.fn().mockResolvedValue(undefined),
+    setWindowLevel: vi.fn(),
+    setPreset: vi.fn(),
+    reset: vi.fn(),
+    captureJpeg: vi.fn().mockResolvedValue(null),
+    destroy: vi.fn(),
+  };
+  return {
+    setPrimaryTool: vi.fn(),
+    collectMeasurements: vi.fn(() => [] as unknown[]),
+    deleteAnnotation: vi.fn(),
+    annotationHistory: {
+      undo: vi.fn(() => false),
+      redo: vi.fn(() => false),
+      canUndo: vi.fn(() => false),
+      canRedo: vi.fn(() => false),
       reset: vi.fn(),
-      captureJpeg: vi.fn().mockResolvedValue(null),
-      destroy: vi.fn(),
-    };
-    return {
-      setPrimaryTool: vi.fn(),
-      collectMeasurements: vi.fn(() => [] as unknown[]),
-      annotationHistory: {
-        undo: vi.fn(() => false),
-        redo: vi.fn(() => false),
-        canUndo: vi.fn(() => false),
-        canRedo: vi.fn(() => false),
-        reset: vi.fn(),
-        subscribe: vi.fn(() => () => {}),
-      },
-      mprHandle,
-      // Fire onReady synchronously so the viewer's mprReady gate flips (the preset
-      // picker is disabled until the volume is ready); the real handle fires it
-      // after the volume builds.
-      createMprView: vi.fn((_els: unknown, cb?: { onReady?: () => void }) => {
-        cb?.onReady?.();
-        return mprHandle;
-      }),
-    };
-  });
+      subscribe: vi.fn(() => () => {}),
+    },
+    mprHandle,
+    // Fire onReady synchronously so the viewer's mprReady gate flips (the preset
+    // picker is disabled until the volume is ready); the real handle fires it
+    // after the volume builds.
+    createMprView: vi.fn((_els: unknown, cb?: { onReady?: () => void }) => {
+      cb?.onReady?.();
+      return mprHandle;
+    }),
+  };
+});
 vi.mock("@orbidicom/core", () => {
   // Minimal stand-ins for the pure hotkey helpers (the real ones live in core).
   const DEFAULT_KEYMAP: Record<string, unknown> = {
@@ -108,7 +115,7 @@ vi.mock("@orbidicom/core", () => {
     onMeasurementsChanged: vi.fn(() => () => {}),
     annotationHistory,
     startAnnotationHistory: vi.fn(() => () => {}),
-    deleteAnnotation: vi.fn(),
+    deleteAnnotation,
     getAnnotationDeleteTargets: vi.fn(() => []),
     subscribeOverlayReposition: vi.fn(() => () => {}),
     createMprView,
@@ -674,27 +681,27 @@ describe("Viewer", () => {
 });
 
 describe("multi-study lifecycle", () => {
-  const mk = (uid: string, studyUid: string, date: string) => ({
+  const mk = (uid: string, studyUid: string, date: string, frames = 3) => ({
     seriesInstanceUID: uid,
     studyInstanceUID: studyUid,
     modality: "CT",
-    numberOfFrames: 3,
+    numberOfFrames: frames,
     study: { studyDate: date, studyDescription: `Study ${studyUid}` },
   });
 
-  function twoStudySource() {
+  // `frames` sizes every series, so the same fixture covers the stack tests (3)
+  // and the MPR ones (>= the 16-slice volume threshold).
+  function twoStudySource(frames = 3) {
     const byStudy: Record<string, ReturnType<typeof mk>[]> = {
-      OLD: [mk("O1", "OLD", "20240101")],
-      NEW: [mk("N1", "NEW", "20260314")],
+      OLD: [mk("O1", "OLD", "20240101", frames)],
+      NEW: [mk("N1", "NEW", "20260314", frames)],
+      MID: [mk("M1", "MID", "20250101", frames)],
     };
     return {
       capabilities: { downloadArchive: false, multiStudy: true, studySearch: true },
       getSeries: async (uids: string[]) => uids.flatMap((u) => byStudy[u] ?? []),
-      getImageIds: async (s: { seriesInstanceUID: string }) => [
-        `${s.seriesInstanceUID}-a`,
-        `${s.seriesInstanceUID}-b`,
-        `${s.seriesInstanceUID}-c`,
-      ],
+      getImageIds: async (s: { seriesInstanceUID: string }) =>
+        Array.from({ length: frames }, (_, i) => `${s.seriesInstanceUID}-${i}`),
       searchStudies: async () => [],
     };
   }
@@ -876,5 +883,200 @@ describe("multi-study lifecycle", () => {
     await w.setProps({ studyUids: ["OLD"] });
     await flushPromises();
     expect(uidsOf(w)).toEqual(["O1"]);
+  });
+
+  // C1 — the MPR is a second handle covering the whole stage, and exitMpr is
+  // otherwise only reachable from the layout picker. Blanking the cell it was
+  // built from has to tear it down, or the closed study keeps rendering (and
+  // keeps being exportable via captureJpeg) after the rail has forgotten it.
+  it("leaves MPR when the study behind the reconstruction is closed", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource(20) as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    await w.find(".layout__select").setValue("mpr");
+    await flushPromises();
+    expect(w.find(".mpr").exists()).toBe(true);
+
+    mprHandle.destroy.mockClear();
+    // Cell 0 holds N1, and the volume was built from it.
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(mprHandle.destroy).toHaveBeenCalled();
+    expect(w.find(".mpr").exists()).toBe(false);
+    expect(w.find(".grid--hidden").exists()).toBe(false); // back to the stack grid
+  });
+
+  // The mount load is async and the studyUids watcher is live from setup, so a
+  // host can complete a whole swap inside mount's getSeries window. This holds
+  // the OLD fetch open so that window is controllable.
+  function gatedSource() {
+    const src = twoStudySource();
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    const inner = src.getSeries;
+    src.getSeries = async (uids: string[]) => {
+      if (uids.includes("OLD")) await gate;
+      return inner(uids);
+    };
+    return { src, release: () => open() };
+  }
+
+  // C2a — the mount load must not reinstate a study the host has already
+  // dismissed, nor reassign series.value under a cell that has moved on.
+  it("does not let the mount load overwrite a study the host swapped to mid-flight", async () => {
+    const { src, release } = gatedSource();
+    const w = mount(Viewer, { props: { source: src as never, studyUids: ["OLD"] } });
+    await flushPromises();
+    await w.setProps({ studyUids: ["NEW"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1"]);
+
+    release();
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1"]);
+    expect(rail(w).props("active")).toBe(0); // the cell still points at its own series
+    const ev = w.emitted("update:studyUids");
+    expect(ev?.[ev.length - 1]).toEqual([["NEW"]]);
+  });
+
+  // C2b — the open set must be derived from what actually loaded, not written
+  // straight from the prop: doing the latter makes the watcher skip a study it
+  // never fetched, and lets the mount's own study be merged a second time.
+  it("loads a study appended to studyUids while the mount load is still in flight", async () => {
+    const { src, release } = gatedSource();
+    const spy = vi.spyOn(src, "getSeries");
+    const w = mount(Viewer, { props: { source: src as never, studyUids: ["OLD"] } });
+    await flushPromises();
+    await w.setProps({ studyUids: ["OLD", "NEW"] });
+    await flushPromises();
+    release();
+    await flushPromises();
+
+    expect(uidsOf(w)).toEqual(["N1", "O1"]);
+    const ev = w.emitted("update:studyUids");
+    expect([...((ev?.[ev.length - 1]?.[0] as string[]) ?? [])].sort()).toEqual(["NEW", "OLD"]);
+    expect(spy.mock.calls.flat(2).filter((u) => u === "OLD")).toHaveLength(1);
+  });
+
+  // I1 — "no cell is hung" is not "no session state". A study can be open, and
+  // carry key images, while every cell happens to be blank.
+  it("keeps another open study's key images when a study is added after the cells emptied", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    // Cell 0 holds N1 (newest first): flag a key image, then move the cell to O1.
+    await w.find(".tbtn--keyimage").trigger("click");
+    expect(w.find(".tbtn--export-keyimages").exists()).toBe(true);
+    rail(w).vm.$emit("select", 1);
+    await flushPromises();
+
+    // Closing OLD empties every cell — but NEW is still open, with its flag.
+    rail(w).vm.$emit("close-study", "OLD");
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1"]);
+
+    await w.setProps({ studyUids: ["NEW", "MID"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1", "M1"]);
+    expect(w.find(".tbtn--export-keyimages").exists()).toBe(true);
+  });
+
+  // I2 — the idempotence guard is checked before an await, so it has to consult
+  // the in-flight set too or a second prop change re-enters the same add.
+  it("fetches a study once when two prop changes race the same add", async () => {
+    const src = twoStudySource();
+    // Hold NEW's fetch open so the second prop change genuinely lands mid-flight —
+    // without a gate the first add resolves first and openStudyUids alone covers it.
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    const inner = src.getSeries;
+    src.getSeries = async (uids: string[]) => {
+      if (uids.includes("NEW")) await gate;
+      return inner(uids);
+    };
+    const spy = vi.spyOn(src, "getSeries");
+    const w = mount(Viewer, { props: { source: src as never, studyUids: ["OLD"] } });
+    await flushPromises();
+    spy.mockClear();
+
+    await w.setProps({ studyUids: ["OLD", "NEW"] });
+    await w.setProps({ studyUids: ["OLD", "NEW", "MID"] });
+    await flushPromises();
+    open();
+    await flushPromises();
+
+    expect(spy.mock.calls.flat(2).filter((u) => u === "NEW")).toHaveLength(1);
+    expect(uidsOf(w)).toEqual(["N1", "M1", "O1"]);
+    const ev = w.emitted("update:studyUids");
+    expect([...((ev?.[ev.length - 1]?.[0] as string[]) ?? [])].sort()).toEqual([
+      "MID",
+      "NEW",
+      "OLD",
+    ]);
+  });
+
+  // I3 — user work outlives the cell that displayed it, so both the confirm gate
+  // and the purge must key off the series, not off what is currently hung.
+  it("confirms and purges key images on a series that has since left its cell", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    await w.find(".tbtn--keyimage").trigger("click"); // key image on N1
+    rail(w).vm.$emit("select", 1); // the cell moves to O1
+    await flushPromises();
+    expect(w.find(".tbtn--export-keyimages").exists()).toBe(true);
+
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(w.find(".modal").exists()).toBe(true); // N1's flag is still work to lose
+    await w.find(".modal__btn--danger").trigger("click");
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["O1"]);
+    expect(w.find(".tbtn--export-keyimages").exists()).toBe(false);
+  });
+
+  it("deletes measurements drawn on a closed study's series after the cell moved on", async () => {
+    collectMeasurements.mockReturnValue([{ annotationUID: "m1", imageId: "N1-1" }]);
+    try {
+      const w = mount(Viewer, {
+        props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+      });
+      await flushPromises();
+      rail(w).vm.$emit("select", 1); // the cell leaves N1 for O1
+      await flushPromises();
+      deleteAnnotation.mockClear();
+
+      rail(w).vm.$emit("close-study", "NEW");
+      await flushPromises();
+      expect(w.find(".modal").exists()).toBe(true);
+      await w.find(".modal__btn--danger").trigger("click");
+      await flushPromises();
+      expect(deleteAnnotation).toHaveBeenCalledWith("m1");
+    } finally {
+      collectMeasurements.mockReturnValue([]);
+    }
+  });
+
+  // Minor — study-scoped actions must target what is open, not props.studyUids[0],
+  // which can name a study this session has already closed.
+  it("targets a still-open study for the archive download when the active cell is blank", async () => {
+    const downloadArchive = vi.fn();
+    const src = {
+      ...twoStudySource(),
+      capabilities: { downloadArchive: true, multiStudy: true, studySearch: true },
+      downloadArchive,
+    };
+    // NEW is first in the prop *and* the study being closed.
+    const w = mount(Viewer, { props: { source: src as never, studyUids: ["NEW", "OLD"] } });
+    await flushPromises();
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["O1"]);
+
+    await w.find(".tbtn--download").trigger("click");
+    expect(downloadArchive).toHaveBeenCalledWith("OLD");
   });
 });

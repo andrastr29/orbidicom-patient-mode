@@ -413,6 +413,10 @@ const mprEls = {
 };
 let mpr: MprHandle | null = null;
 let enteringMpr = false;
+// Which cell's series the reconstruction was built from. The MPR is a separate
+// handle from that cell's stack and covers the whole stage, so blanking the cell
+// (its study closed) has to tear the volume down too — see blankCell.
+let mprCell = -1;
 // Active 3D volume-rendering preset (only meaningful in MPR mode).
 const vrPreset = ref<string>(VR_PRESETS[0]);
 const activeTool = ref<string>(TOOLS.WindowLevel);
@@ -461,6 +465,11 @@ const prefetchTotal = reactive<number[]>(fill(0));
 const els: (HTMLDivElement | null)[] = fill(null);
 const stacks: (StackHandle | null)[] = fill(null);
 const cellImageIds: string[][] = Array.from({ length: MAX_CELLS }, () => []);
+// seriesInstanceUID -> the imageIds the viewer actually resolved for it. Keyed by
+// series and scoped to the session, NOT to whichever cell happens to show it now:
+// a user can measure a series, scroll a different one into that cell, and the
+// measurement still belongs to the first. Dropped only when its study closes.
+const loadedImageIds = new Map<string, string[]>();
 const tokens = fill(0);
 
 /**
@@ -471,6 +480,11 @@ const tokens = fill(0);
 function blankCell(i: number) {
   // Invalidate any in-flight load for this cell (same guard loadIntoCell uses).
   tokens[i]++;
+  // The MPR is a second handle rendering this cell's series over the whole stage,
+  // and nothing else drops it (exitMpr is only reachable from setLayout/onMprError).
+  // Left alone it would keep displaying — and captureJpeg would keep exporting —
+  // the closed study's reconstruction long after the rail forgot the study.
+  if (layoutMode.value === "mpr" && mprCell === i) exitMpr();
   stopCine(i);
   clearPdf(i);
   // Destroy, don't just forget: the handle owns this cell's viewport on the shared
@@ -726,52 +740,118 @@ function setOpenStudies(uids: string[]) {
   emit("update:studyUids", uids);
 }
 
+// Study uids whose getSeries() is in flight. The idempotence guard has to consult
+// this as well as openStudyUids: the latter is only written *after* the fetch
+// resolves, so two prop changes in the same tick would otherwise both get past it
+// and merge the same study's block twice.
+const pendingStudyUids = new Set<string>();
+
 /**
- * Load another study into the session. Deliberately NOT applyInitialLayout():
- * that resets annotation history, clears key images and segmentation toggles and
- * re-runs the hanging protocol — right on mount, destructive mid-session. Adding
- * a study preserves annotations, key images, window/level, cellCount and
+ * Load one or more studies into the session, as a single source round trip. A
+ * user-initiated single-study add (the study picker) calls `addStudies([uid])`.
+ *
+ * Deliberately NOT applyInitialLayout() unless the session is empty: that resets
+ * annotation history, clears key images and segmentation toggles and re-runs the
+ * hanging protocol — right on mount, destructive mid-session. Adding to a live
+ * session preserves annotations, key images, window/level, cellCount and
  * activeCell; only array positions move, which remapCells absorbs.
  */
-async function addStudy(uid: string) {
-  if (!uid || openStudyUids.value.includes(uid)) return; // idempotent
-  const added = await props.source.getSeries([uid]);
-  if (!added.length) return;
-  // Nothing on screen (mounted with no study, or every study since closed) means
-  // there is no user work to preserve — so the new study gets the hanging protocol
-  // rather than leaving the stage blank until the user clicks a rail row.
-  const wasEmpty = seriesIdx.every((si) => si < 0);
-  const prev = series.value;
-  const next = orderStudyGroups([...prev, ...added]);
-  remapCells(prev, next);
-  series.value = next;
-  setOpenStudies([...openStudyUids.value, uid]);
-  if (wasEmpty) await applyInitialLayout();
+async function addStudies(uids: string[], initial = false) {
+  const want: string[] = [];
+  for (const uid of uids) {
+    if (!uid || openStudyUids.value.includes(uid) || pendingStudyUids.has(uid)) continue;
+    if (!want.includes(uid)) want.push(uid); // a repeated uid is one study
+  }
+  // The first load always hits the source, even with no uids: `studyUids` is
+  // optional, and a local-file or single-study backend ignores the argument and
+  // returns whatever it holds. Later calls with nothing new to fetch are no-ops.
+  if (!want.length && !initial) return;
+  for (const uid of want) pendingStudyUids.add(uid);
+  let added: SeriesSummary[];
+  try {
+    added = await props.source.getSeries(want);
+  } finally {
+    // Cleared here, and the merge below runs synchronously from this point, so no
+    // other task can observe a uid as neither pending nor open.
+    for (const uid of want) pendingStudyUids.delete(uid);
+  }
+  // "Empty session", not "no cell is hung": a viewer can hold an open study with
+  // key images while every cell happens to be blank (its series was swapped out,
+  // then its study closed). Re-hanging then would silently destroy that work.
+  // Read after the fetch but before the merge, so it describes the session we are
+  // actually adding to — not the one that existed when the request went out.
+  const wasEmpty = !series.value.length;
+  // A source that ignores the uid argument can hand back series the session
+  // already holds; merging a block twice would duplicate rail rows and leave
+  // remapCells pointing cells at the second copy.
+  const have = new Set(series.value.map((s) => s.seriesInstanceUID));
+  const fresh = added.filter((s) => !have.has(s.seriesInstanceUID));
+  if (fresh.length) {
+    const prev = series.value;
+    const next = orderStudyGroups([...prev, ...fresh]);
+    remapCells(prev, next);
+    series.value = next;
+  }
+  setOpenStudies([...openStudyUids.value, ...want]);
+  // Nothing was on screen (mounted, or every study since closed), so there is no
+  // user work to preserve — hang the new set rather than leaving the stage blank
+  // until the user clicks a rail row.
+  if (wasEmpty && series.value.length) await applyInitialLayout();
+}
+
+/**
+ * Bring the session in line with `props.studyUids`. The ONLY writer of the open
+ * set from the prop — mount goes through it too, so an initial load and a
+ * mid-session change can never write `series.value` from two directions.
+ */
+async function syncOpenStudies(initial = false) {
+  const want = props.studyUids ?? [];
+  await addStudies(
+    want.filter((uid) => !openStudyUids.value.includes(uid)),
+    initial,
+  );
+  // Re-read the prop after the await: a host that swaps studies while the first
+  // fetch is still in flight must win over the load already on its way, or the
+  // study it dismissed stays open (and on mount would replace what it asked for).
+  // A host that never passes `studyUids` isn't managing the set — close nothing.
+  const latest = props.studyUids;
+  if (!latest) return;
+  for (const uid of [...openStudyUids.value]) if (!latest.includes(uid)) closeStudy(uid);
 }
 
 // props.studyUids is reactive: a host can add or drop studies mid-session. The
 // diff is idempotent, so re-entering it (e.g. after our own update:studyUids)
-// loads nothing twice.
+// loads nothing twice. Wrapped so the watcher's (new, old) args can't be mistaken
+// for the `initial` flag.
 watch(
   () => props.studyUids,
-  async (next) => {
-    const want = next ?? [];
-    for (const uid of want) if (!openStudyUids.value.includes(uid)) await addStudy(uid);
-    for (const uid of [...openStudyUids.value]) if (!want.includes(uid)) closeStudy(uid);
-  },
+  () => syncOpenStudies(),
 );
 
-/** imageIds the viewer has actually resolved for these series. Only a series that
- *  was loaded into a cell has imageIds, and only those can carry user work. */
+/**
+ * Every imageId the viewer has ever resolved for these series — read from the
+ * session-scoped map, not from the cells. A series that was displayed, annotated
+ * and then scrolled out of its cell still carries that work, and closing its study
+ * must find it.
+ */
 function loadedImageIdsFor(removed: SeriesSummary[]): Set<string> {
-  const uids = new Set(removed.map((s) => s.seriesInstanceUID));
   const ids = new Set<string>();
-  for (let c = 0; c < MAX_CELLS; c++) {
-    const si = seriesIdx[c];
-    const s = si >= 0 ? series.value[si] : undefined;
-    if (s && uids.has(s.seriesInstanceUID)) for (const id of cellImageIds[c]) ids.add(id);
+  for (const s of removed) {
+    for (const id of loadedImageIds.get(s.seriesInstanceUID) ?? []) ids.add(id);
   }
   return ids;
+}
+
+/** Does anything the user made belong to these series? Key images carry their own
+ *  seriesInstanceUID (captured at flag time), so they are matched on that as well
+ *  as on imageId — the two agree, but the uid holds even if a reload changed ids. */
+function hasUserWork(removed: SeriesSummary[]): boolean {
+  const uids = new Set(removed.map((s) => s.seriesInstanceUID));
+  const ids = loadedImageIdsFor(removed);
+  return (
+    [...keyImages.values()].some((k) => ids.has(k.imageId) || uids.has(k.seriesInstanceUID)) ||
+    collectMeasurements().some((m) => ids.has(m.imageId))
+  );
 }
 
 /**
@@ -782,12 +862,23 @@ function loadedImageIdsFor(removed: SeriesSummary[]): Set<string> {
  * doClearAnnotations.
  */
 function purgeUserWork(removed: SeriesSummary[]) {
+  const uids = new Set(removed.map((s) => s.seriesInstanceUID));
   const ids = loadedImageIdsFor(removed);
-  if (!ids.size) return;
+  let touched = false;
   for (const m of collectMeasurements()) {
-    if (ids.has(m.imageId)) deleteAnnotation(m.annotationUID);
+    if (ids.has(m.imageId)) {
+      deleteAnnotation(m.annotationUID);
+      touched = true;
+    }
   }
-  for (const id of ids) keyImages.delete(id);
+  // Snapshot before deleting — keyImages is reactive and this mutates it.
+  for (const k of [...keyImages.values()]) {
+    if (ids.has(k.imageId) || uids.has(k.seriesInstanceUID)) {
+      keyImages.delete(k.imageId);
+      touched = true;
+    }
+  }
+  if (!touched) return;
   annotationHistory.reset();
   refreshAllAnnotations();
 }
@@ -809,14 +900,21 @@ function dropSegmentationsFor(removed: SeriesSummary[]) {
 
 function closeStudy(uid: string) {
   const removed = series.value.filter((s) => s.studyInstanceUID === uid);
-  if (!removed.length) return;
+  if (!removed.length) {
+    // Open, but the source returned no series for it. Still drop it from the open
+    // set, so a host's v-model converges instead of re-requesting it forever.
+    if (openStudyUids.value.includes(uid)) {
+      setOpenStudies(openStudyUids.value.filter((u) => u !== uid));
+    }
+    return;
+  }
   const prev = series.value;
   const next = prev.filter((s) => s.studyInstanceUID !== uid);
-  // Purge before remapping: it reads cellImageIds/seriesIdx as they are now.
   purgeUserWork(removed);
   dropSegmentationsFor(removed);
   remapCells(prev, next);
   series.value = next;
+  for (const s of removed) loadedImageIds.delete(s.seriesInstanceUID);
   thumbnails.release(removed.map((s) => s.seriesInstanceUID));
   setOpenStudies(openStudyUids.value.filter((u) => u !== uid));
 }
@@ -827,11 +925,7 @@ const confirmCloseUid = ref<string | null>(null);
  *  lose. Dismissing a prior you merely glanced at stays frictionless. */
 function onCloseStudy(uid: string) {
   const removed = series.value.filter((s) => s.studyInstanceUID === uid);
-  const ids = loadedImageIdsFor(removed);
-  const hasWork =
-    [...ids].some((id) => keyImages.has(id)) ||
-    collectMeasurements().some((m) => ids.has(m.imageId));
-  if (hasWork) confirmCloseUid.value = uid;
+  if (hasUserWork(removed)) confirmCloseUid.value = uid;
   else closeStudy(uid);
 }
 
@@ -997,6 +1091,7 @@ async function loadIntoCell(i: number, si: number) {
   }
   clearPdf(i);
   cellImageIds[i] = imageIds;
+  loadedImageIds.set(s.seriesInstanceUID, imageIds);
   sliceCount[i] = imageIds.length;
   // The series-list count is a pre-fetch estimate (e.g. QIDO instance count),
   // which under-reports multi-frame series where one instance yields many frames
@@ -1125,6 +1220,7 @@ async function enterMpr() {
   const ids = cellImageIds[i];
   if (ids.length < MIN_MPR_SLICES) return;
   enteringMpr = true;
+  mprCell = i;
   stopCine(i);
   mprReady.value = false;
   layoutMode.value = "mpr";
@@ -1162,6 +1258,7 @@ function onVrPreset(name: string) {
 function exitMpr() {
   mpr?.destroy();
   mpr = null;
+  mprCell = -1;
   mprReady.value = false;
   layoutMode.value = "grid";
 }
@@ -1193,7 +1290,11 @@ function doClearAnnotations() {
 }
 
 function activeStudyUid(): string {
-  return series.value[seriesIdx[activeCell.value]]?.studyInstanceUID ?? props.studyUids?.[0] ?? "";
+  // Fall back to what is actually open, not to the prop: after a close the prop's
+  // first entry can name a study this session no longer holds.
+  return (
+    series.value[seriesIdx[activeCell.value]]?.studyInstanceUID ?? openStudyUids.value[0] ?? ""
+  );
 }
 function onDownloadStudy() {
   void Promise.resolve(props.source.downloadArchive?.(activeStudyUid())).catch((e) =>
@@ -1331,12 +1432,12 @@ onMounted(async () => {
   stopHistory = startAnnotationHistory();
   unsubscribeHistory = annotationHistory.subscribe(() => historyVersion.value++);
   await initCornerstone();
-  // Normalize the initial load the same way addStudy does, so `series.value` is
-  // newest-study-first from the very first render regardless of what order a
-  // particular DataSource returns a multi-study request in.
-  series.value = orderStudyGroups(await props.source.getSeries(props.studyUids ?? []));
-  setOpenStudies([...(props.studyUids ?? [])]);
-  if (series.value.length) await applyInitialLayout();
+  // The initial load is just the first reconciliation: one getSeries() for the
+  // whole prop, ordered newest-study-first, hung by the protocol because the
+  // session is empty. Going through syncOpenStudies (rather than assigning
+  // series.value here) means a host that swaps studies while this is still in
+  // flight cannot end up with the mount's result overwriting theirs unremapped.
+  await syncOpenStudies(true);
 });
 
 // Arrange the loaded series per the hanging protocol (default "single" keeps the
