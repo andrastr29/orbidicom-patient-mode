@@ -1278,6 +1278,29 @@ describe("multi-study lifecycle", () => {
     expect(uidsOf(w)).toEqual(["N1"]);
   });
 
+  // Final-review 5 — with two patients open at once, a destructive confirm has to
+  // say which study it is about.
+  it("names the study in the close confirm", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    await w.find(".tbtn--keyimage").trigger("click"); // give NEW work, so it asks
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+
+    const modal = w.find(".modal");
+    expect(modal.exists()).toBe(true);
+    const subject = modal.find(".modal__subject");
+    expect(subject.exists()).toBe(true);
+    expect(subject.text()).toContain("Study NEW"); // studyDescription
+    expect(subject.text()).toContain("2026"); // formatted studyDate
+    // The unnamed OLD study's identity must not be what is shown.
+    expect(subject.text()).not.toContain("Study OLD");
+    // The existing message is still there, unchanged in shape.
+    expect(modal.find(".modal__msg").text()).toContain("Close this study?");
+  });
+
   // Round-2 residual — replacing one study with another must not leave a black
   // stage. The merge sees a non-empty session so it doesn't re-hang, then the
   // close pass blanks the old study's cell; at cellCount === 1 the "pick a

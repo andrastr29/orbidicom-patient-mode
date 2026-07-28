@@ -264,6 +264,7 @@
 
     <div v-if="confirmCloseUid" class="modal" @click.self="confirmCloseUid = null">
       <div class="modal__card">
+        <p v-if="confirmCloseLabel" class="modal__subject">{{ confirmCloseLabel }}</p>
         <p class="modal__msg">{{ t("confirmCloseStudy") }}</p>
         <div class="modal__actions">
           <button class="modal__btn" @click="confirmCloseUid = null">{{ t("cancel") }}</button>
@@ -370,7 +371,7 @@ import type {
   SegmentationInstance,
   AIResultSet,
 } from "@orbidicom/core";
-import { t, dir, getLang } from "../i18n";
+import { t, dir, getLang, formatDicomDate } from "../i18n";
 
 // Mirrors the whole viewer for right-to-left UI languages (Arabic, Persian, …).
 // Reactive: reading getLang() tracks setLang(), so switching language flips dir.
@@ -1010,6 +1011,21 @@ function closeStudy(uid: string) {
 }
 
 const confirmCloseUid = ref<string | null>(null);
+
+/**
+ * Which study the close confirm is about, in the same identity line the rail's
+ * group header shows (date · description · patient). With two patients open at
+ * once — the whole point of this feature — an unnamed destructive confirm is the
+ * wrong affordance. Composed alongside the existing message rather than
+ * interpolated into it, so no locale string changes shape.
+ */
+const confirmCloseLabel = computed(() => {
+  const uid = confirmCloseUid.value;
+  if (!uid) return "";
+  const st = series.value.find((s) => s.studyInstanceUID === uid)?.study;
+  const who = st?.patientName || st?.patientId || "";
+  return [formatDicomDate(st?.studyDate), st?.studyDescription, who].filter(Boolean).join(" · ");
+});
 
 /** Close is destructive, so it asks first — but only when there is something to
  *  lose. Dismissing a prior you merely glanced at stays frictionless. */
@@ -2055,6 +2071,15 @@ onUnmounted(() => {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+.modal__subject {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 .modal__msg {
   margin: 0 0 18px;
