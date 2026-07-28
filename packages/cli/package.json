@@ -1,6 +1,6 @@
 {
   "name": "orbidicom",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "CLI for OrbiDICOM, a modern, mobile-responsive, multilingual, Kubernetes-ready (Helm chart included) open-source DICOM viewer: `npx orbidicom` to run locally or against any PACS.",
   "license": "MIT",
   "homepage": "https://github.com/docorbitapp/orbidicom#readme",

@@ -1,5 +1,17 @@
 # @orbidicom/vue
 
+## 0.12.1
+
+### Patch Changes
+
+- [`33a3f18`](https://github.com/docorbitapp/orbidicom/commit/33a3f18637a09a9c294c0c15ca689d0a5c362c3a) Thanks [@gasci](https://github.com/gasci)! - Add an About row showing the running viewer version. It lives in the controls
+  dock, so it renders at the bottom of the left rail on desktop and inside the
+  hamburger dropdown on phones. The version is read from the package's own
+  `package.json` (also exported as `VERSION`), so a release bump can't drift from
+  what the UI reports.
+- Updated dependencies []:
+  - @orbidicom/core@0.12.1
+
 ## 0.12.0
 
 ### Minor Changes
