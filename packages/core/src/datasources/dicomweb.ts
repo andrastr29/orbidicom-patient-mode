@@ -16,6 +16,7 @@ import type {
 import type { AuthStrategy } from "../auth";
 import { authHeaders } from "../auth";
 import { buildWadoRsImageId } from "../imageIds";
+import { orderStudyGroups } from "../study-order";
 import { srTreeFromJson } from "../sr/from-json";
 import { isSegmentation, parseSeg } from "../seg/parse";
 import { decodeSegmentation } from "../seg/decode";
@@ -260,7 +261,9 @@ export class DicomWebDataSource implements DataSource {
         });
       }
     }
-    return pairs.sort((a, b) => a.number - b.number).map((p) => p.summary);
+    // Sort by series number first, then reorder whole study blocks newest-first —
+    // grouping preserves relative order, so each block stays series-number-ordered.
+    return orderStudyGroups(pairs.sort((a, b) => a.number - b.number).map((p) => p.summary));
   }
 
   async getImageIds(series: SeriesSummary): Promise<string[]> {

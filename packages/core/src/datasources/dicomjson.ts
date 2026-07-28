@@ -6,6 +6,7 @@ import type {
   DataSourceCapabilities,
 } from "../datasource";
 import { buildWadoRsImageId } from "../imageIds";
+import { orderStudyGroups } from "../study-order";
 
 const TAG = {
   STUDY_UID: "0020000D",
@@ -106,9 +107,11 @@ export class DicomJsonDataSource implements DataSource {
       }
       entry.count += 1;
     }
-    return [...bySeries.values()]
-      .sort((a, b) => a.number - b.number)
-      .map((e) => ({ ...e.summary, numberOfFrames: e.count }));
+    return orderStudyGroups(
+      [...bySeries.values()]
+        .sort((a, b) => a.number - b.number)
+        .map((e) => ({ ...e.summary, numberOfFrames: e.count })),
+    );
   }
 
   async getImageIds(series: SeriesSummary): Promise<string[]> {

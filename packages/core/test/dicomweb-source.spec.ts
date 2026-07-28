@@ -146,6 +146,40 @@ describe("DicomWebDataSource", () => {
     const [s] = await ds.getSeries(["ST1"]);
     expect(s.study).toEqual({});
   });
+
+  it("returns the newest study first instead of interleaving series numbers", async () => {
+    const bySeries: Record<string, unknown[]> = {
+      OLD: [
+        {
+          "0020000E": { Value: ["O1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["CT"] },
+          "00080020": { Value: ["20240101"] },
+        },
+        {
+          "0020000E": { Value: ["O2"] },
+          "00200011": { Value: [2] },
+          "00080060": { Value: ["CT"] },
+          "00080020": { Value: ["20240101"] },
+        },
+      ],
+      NEW: [
+        {
+          "0020000E": { Value: ["N1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["CT"] },
+          "00080020": { Value: ["20260314"] },
+        },
+      ],
+    };
+    const client = {
+      searchForSeries: async (q: { studyInstanceUID: string }) => bySeries[q.studyInstanceUID],
+    };
+    const ds = new DicomWebDataSource({ root: "/dw", client: client as never });
+    // Requested oldest-first; the newest study must still come back first.
+    const out = await ds.getSeries(["OLD", "NEW"]);
+    expect(out.map((s) => s.seriesInstanceUID)).toEqual(["N1", "O1", "O2"]);
+  });
 });
 
 describe("DicomWebDataSource encapsulated PDFs", () => {
