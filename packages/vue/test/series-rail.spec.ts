@@ -188,6 +188,41 @@ describe("SeriesRail", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("keeps already-loaded thumbnails when a study is appended", async () => {
+    const provider = providerStub("blob:mock/thumb");
+    const w = mount(SeriesRail, { props: { series, active: 0, provider } });
+    await flushPromises();
+    expect(provider.get).toHaveBeenCalledTimes(2);
+    // Append a third series (a new study arriving mid-session).
+    await w.setProps({
+      series: [...series, { seriesInstanceUID: "S3", modality: "CT", numberOfFrames: 9 }],
+    });
+    await flushPromises();
+    // Only the new row resolves — the first two keep their cached previews.
+    expect(provider.get).toHaveBeenCalledTimes(3);
+    expect(w.findAll(".rail__item")[0].find(".rail__img").exists()).toBe(true);
+  });
+
+  it("keeps thumbnails when the array is merely reordered", async () => {
+    const provider = providerStub("blob:mock/thumb");
+    const w = mount(SeriesRail, { props: { series, active: 0, provider } });
+    await flushPromises();
+    expect(provider.get).toHaveBeenCalledTimes(2);
+    await w.setProps({ series: [series[1], series[0]] });
+    await flushPromises();
+    expect(provider.get).toHaveBeenCalledTimes(2); // no refetch
+  });
+
+  it("drops preview state only for series that disappeared", async () => {
+    const provider = providerStub("blob:mock/thumb");
+    const w = mount(SeriesRail, { props: { series, active: 0, provider } });
+    await flushPromises();
+    await w.setProps({ series: [series[0]] }); // S2 removed
+    await flushPromises();
+    expect(provider.get).toHaveBeenCalledTimes(2); // S1 not refetched
+    expect(w.findAll(".rail__item").length).toBe(1);
+  });
 });
 
 describe("multi-study grouping", () => {

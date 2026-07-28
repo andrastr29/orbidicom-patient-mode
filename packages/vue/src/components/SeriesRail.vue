@@ -292,19 +292,35 @@ onBeforeMount(() => {
   io = createObserver();
 });
 
-// A new study replaces props.series wholesale (identity change). In-place count
-// reconciliation mutates existing objects and won't trip this. Reset preview
-// state AND rebuild the observer so it stops referencing the old study's
-// now-detached rows (the long-lived singleton's `onUnmounted` never fires
-// mid-session, so a stale observer would pin every offscreen element forever).
+// props.series changes identity on every study add/close and on reorder, so this
+// can't assume a wholesale study swap any more. Diff by UID: forget preview state
+// only for series that actually disappeared, and keep everything else so an
+// append or reorder never refetches a thumbnail the user already has.
+//
+// The observer is still rebuilt whenever rows are removed — the long-lived
+// singleton's onUnmounted never fires mid-session, so a stale observer would pin
+// every detached offscreen element forever.
 watch(
   () => props.series,
   () => {
-    io?.disconnect();
-    io = createObserver();
-    observed.clear();
-    seriesByUid.clear();
-    for (const k of Object.keys(states)) delete states[k];
+    const live = new Set(props.series.map((s) => s.seriesInstanceUID));
+    let removed = false;
+    for (const uid of [...observed]) {
+      if (live.has(uid)) continue;
+      removed = true;
+      observed.delete(uid);
+      seriesByUid.delete(uid);
+      delete states[uid];
+    }
+    if (removed) {
+      io?.disconnect();
+      io = createObserver();
+      // Rows that survived must be re-observed against the new observer; their
+      // `observed` entries are cleared so the function refs re-register them.
+      for (const uid of [...observed]) {
+        if (states[uid] === undefined) observed.delete(uid);
+      }
+    }
   },
 );
 
