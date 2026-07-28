@@ -1,67 +1,134 @@
 <template>
   <div class="rail">
-    <button
-      v-for="(s, i) in series"
-      :key="s.seriesInstanceUID"
-      class="rail__item"
-      :class="{ 'rail__item--active': i === active }"
-      :title="label(s, i)"
-      @click="$emit('select', i)"
-    >
-      <span :ref="(el) => bindThumb(el as Element | null, s)" class="rail__thumb">
-        <img
-          v-if="st(s).kind === 'image'"
-          class="rail__img"
-          :src="st(s).url!"
-          alt=""
-          decoding="async"
-        />
-        <svg
-          v-else-if="st(s).kind === 'doc'"
-          class="rail__glyph rail__glyph--doc"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
+    <template v-for="(g, gi) in groups" :key="g.uid || gi">
+      <div v-if="grouped" class="rail__group">
+        <span class="rail__group-lines">
+          <span class="rail__group-title">{{ g.line1 }}</span>
+          <span v-if="g.line2" class="rail__group-sub">{{ g.line2 }}</span>
+        </span>
+        <span class="rail__group-count">{{ g.rows.length }}</span>
+        <button
+          class="rail__group-close"
+          type="button"
+          :aria-label="t('closeStudy')"
+          :title="t('closeStudy')"
+          @click="$emit('close-study', g.uid)"
         >
-          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-          <path d="M14 3v5h5" />
-        </svg>
-        <svg
-          v-else-if="st(s).kind === 'none'"
-          class="rail__glyph rail__glyph--none"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <rect x="4" y="5" width="16" height="14" rx="2" />
-          <path d="M4 15l4-4 4 4 3-3 5 5" />
-        </svg>
-        <span v-else class="rail__spinner" aria-hidden="true"></span>
-        <span class="rail__ord">{{ i + 1 }}</span>
-      </span>
-      <span class="rail__body">
-        <span class="rail__name">{{ s.seriesDescription || s.modality || t("series") }}</span>
-        <span class="rail__meta">{{ meta(s) }}</span>
-      </span>
-    </button>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <button
+        v-for="(r, ri) in g.rows"
+        :key="r.s.seriesInstanceUID"
+        class="rail__item"
+        :class="{ 'rail__item--active': r.flat === active }"
+        :title="label(r.s, ri)"
+        @click="$emit('select', r.flat)"
+      >
+        <span :ref="(el) => bindThumb(el as Element | null, r.s)" class="rail__thumb">
+          <img
+            v-if="st(r.s).kind === 'image'"
+            class="rail__img"
+            :src="st(r.s).url!"
+            alt=""
+            decoding="async"
+          />
+          <svg
+            v-else-if="st(r.s).kind === 'doc'"
+            class="rail__glyph rail__glyph--doc"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+            <path d="M14 3v5h5" />
+          </svg>
+          <svg
+            v-else-if="st(r.s).kind === 'none'"
+            class="rail__glyph rail__glyph--none"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <rect x="4" y="5" width="16" height="14" rx="2" />
+            <path d="M4 15l4-4 4 4 3-3 5 5" />
+          </svg>
+          <span v-else class="rail__spinner" aria-hidden="true"></span>
+          <span class="rail__ord">{{ ri + 1 }}</span>
+        </span>
+        <span class="rail__body">
+          <span class="rail__name">{{ r.s.seriesDescription || r.s.modality || t("series") }}</span>
+          <span class="rail__meta">{{ meta(r.s) }}</span>
+        </span>
+      </button>
+    </template>
   </div>
 </template>
 <script setup lang="ts">
-import { reactive, onBeforeMount, onUnmounted, watch } from "vue";
+import { reactive, computed, onBeforeMount, onUnmounted, watch } from "vue";
 import { isImageSeries } from "@orbidicom/core";
 import type { SeriesSummary, ThumbnailProvider } from "@orbidicom/core";
-import { t } from "../i18n";
+import { t, formatDicomDate } from "../i18n";
 
 const props = defineProps<{
   series: SeriesSummary[];
   active: number;
   provider?: ThumbnailProvider;
 }>();
-defineEmits<{ select: [number] }>();
+defineEmits<{ select: [number]; "close-study": [string] }>();
+
+/** A study's series, plus the flat index of each row so `select` stays flat. */
+type Group = {
+  uid: string;
+  rows: { s: SeriesSummary; flat: number }[];
+  line1: string;
+  line2: string;
+};
+
+// Group only when the rail actually holds more than one study. A single study —
+// or a local-file session where every studyInstanceUID is undefined — renders
+// exactly as it always has: no headers, no collapse, no behavior change.
+const grouped = computed(() => new Set(props.series.map((s) => s.studyInstanceUID ?? "")).size > 1);
+
+// With several patients on screen, patient identity outranks the description:
+// the mismatch must be visible at all times (it is never blocked or confirmed).
+const multiPatient = computed(
+  () => new Set(props.series.map((s) => s.study?.patientName ?? s.study?.patientId ?? "")).size > 1,
+);
+
+const groups = computed<Group[]>(() => {
+  const byUid = new Map<string, { s: SeriesSummary; flat: number }[]>();
+  props.series.forEach((s, flat) => {
+    const uid = s.studyInstanceUID ?? "";
+    const rows = byUid.get(uid);
+    if (rows) rows.push({ s, flat });
+    else byUid.set(uid, [{ s, flat }]);
+  });
+  return [...byUid.entries()].map(([uid, rows], i) => {
+    const st = rows[0]?.s.study;
+    const date = formatDicomDate(st?.studyDate);
+    const desc = st?.studyDescription ?? "";
+    const who = st?.patientName || st?.patientId || "";
+    // Fallback chain, so a header is never blank and never shows a raw UID:
+    // date → description → positional. A study UID is opaque and unreadable.
+    const line1 = date || desc || t("studyN").replace("{n}", String(i + 1));
+    const line2 = date ? (multiPatient.value ? who : desc) : "";
+    return { uid, rows, line1, line2 };
+  });
+});
 
 // The image count is only meaningful for image series. Report/document series
 // (e.g. an encapsulated PDF, modality DOC, 0 frames) show just the modality —
@@ -288,6 +355,69 @@ onUnmounted(() => io?.disconnect());
 .rail__meta {
   font-size: 11px;
   color: var(--muted);
+}
+
+.rail__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px 5px;
+  border-bottom: 1px solid var(--border);
+  /* Sticky so the study a row belongs to stays on screen while scrolling. */
+  position: sticky;
+  top: -8px; /* cancels .rail's 8px padding */
+  background: var(--panel);
+  z-index: 1;
+}
+.rail__group-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+.rail__group-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail__group-sub {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail__group-count {
+  margin-inline-start: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.rail__group-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.rail__group-close:hover {
+  background: var(--elevated);
+  color: var(--text);
+}
+.rail__group-close svg {
+  width: 11px;
+  height: 11px;
 }
 
 /* Mobile: horizontal strip; each item becomes a thumbnail-over-caption tile. */

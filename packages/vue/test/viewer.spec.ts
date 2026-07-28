@@ -121,6 +121,13 @@ vi.mock("@orbidicom/core", () => {
     // Mirrors core's modality-based report test (SR/DOC/KO/PR/AU are non-image).
     isImageSeries: (s: { modality?: string }) =>
       !new Set(["SR", "DOC", "KO", "PR", "AU"]).has((s.modality ?? "").toUpperCase()),
+    // Mirrors core's normalization of a raw DICOM DA ("YYYYMMDD" -> "YYYY-MM-DD");
+    // the series rail's per-study header (formatDicomDate, via i18n) depends on it.
+    dicomDate: (v: unknown) => {
+      if (v == null || v === "") return undefined;
+      const s = String(v);
+      return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : s;
+    },
     // Honors a custom protocol function; any built-in name defaults to single view.
     applyHangingProtocol: (
       ser: unknown[],

@@ -189,3 +189,104 @@ describe("SeriesRail", () => {
     }
   });
 });
+
+describe("multi-study grouping", () => {
+  const twoStudies = [
+    {
+      seriesInstanceUID: "N1",
+      studyInstanceUID: "NEW",
+      modality: "MR",
+      seriesDescription: "Ax T1",
+      numberOfFrames: 176,
+      study: { studyDate: "20260314", studyDescription: "MR Brain", patientName: "DOE^JANE" },
+    },
+    {
+      seriesInstanceUID: "N2",
+      studyInstanceUID: "NEW",
+      modality: "MR",
+      seriesDescription: "Ax T2",
+      numberOfFrames: 48,
+      study: { studyDate: "20260314", studyDescription: "MR Brain", patientName: "DOE^JANE" },
+    },
+    {
+      seriesInstanceUID: "O1",
+      studyInstanceUID: "OLD",
+      modality: "MR",
+      seriesDescription: "Ax T1 SE",
+      numberOfFrames: 24,
+      study: { studyDate: "20241102", studyDescription: "MR Brain prior", patientName: "DOE^JANE" },
+    },
+  ];
+
+  it("renders no study headers for a single study (backward compatibility)", () => {
+    const w = mount(SeriesRail, { props: { series, active: 0 } });
+    expect(w.findAll(".rail__group").length).toBe(0);
+    expect(w.findAll(".rail__item").length).toBe(2);
+  });
+
+  it("renders one header per study when two studies are present", () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    const headers = w.findAll(".rail__group");
+    expect(headers.length).toBe(2);
+    expect(headers[0].text()).toContain("MR Brain");
+    expect(headers[0].text()).toContain("2"); // series count
+    expect(headers[1].text()).toContain("MR Brain prior");
+  });
+
+  it("restarts series ordinals at 1 within each study", () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    const ords = w.findAll(".rail__ord").map((o) => o.text());
+    expect(ords).toEqual(["1", "2", "1"]);
+  });
+
+  it("still emits the flat index on select, not a per-group index", async () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    await w.findAll(".rail__item")[2].trigger("click");
+    expect(w.emitted("select")?.[0]).toEqual([2]);
+  });
+
+  it("shows the study description on line 2 when all studies share a patient", () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    const sub = w.findAll(".rail__group-sub")[0];
+    expect(sub.text()).toContain("MR Brain");
+    expect(sub.text()).not.toContain("DOE");
+  });
+
+  it("shows the patient name on line 2 when studies span more than one patient", () => {
+    const crossPatient = [
+      twoStudies[0],
+      { ...twoStudies[2], study: { ...twoStudies[2].study, patientName: "ROE^RICHARD" } },
+    ];
+    const w = mount(SeriesRail, { props: { series: crossPatient, active: 0 } });
+    const subs = w.findAll(".rail__group-sub").map((s) => s.text());
+    expect(subs[0]).toContain("DOE");
+    expect(subs[1]).toContain("ROE");
+  });
+
+  it("falls back to the description, then to a positional label, and never shows a UID", () => {
+    const sparse = [
+      {
+        seriesInstanceUID: "A1",
+        studyInstanceUID: "1.2.840.113619.2.55.QUITELONGUID",
+        modality: "CT",
+      },
+      {
+        seriesInstanceUID: "B1",
+        studyInstanceUID: "STB",
+        modality: "CT",
+        study: { studyDescription: "No date here" },
+      },
+    ];
+    const w = mount(SeriesRail, { props: { series: sparse, active: 0 } });
+    const text = w.findAll(".rail__group").map((h) => h.text());
+    expect(text.join(" ")).not.toContain("1.2.840");
+    expect(text.join(" ")).toContain("No date here");
+    expect(text.some((x) => /Study\s*1|Study\s*2/.test(x))).toBe(true);
+  });
+
+  it("emits close-study with the study uid when a header's close button is clicked", async () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    await w.findAll(".rail__group-close")[1].trigger("click");
+    expect(w.emitted("close-study")?.[0]).toEqual(["OLD"]);
+  });
+});
