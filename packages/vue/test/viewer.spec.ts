@@ -25,6 +25,7 @@ const {
   setPrimaryTool,
   collectMeasurements,
   deleteAnnotation,
+  initCornerstone,
   mprHandle,
   createMprView,
   annotationHistory,
@@ -41,6 +42,9 @@ const {
     setPrimaryTool: vi.fn(),
     collectMeasurements: vi.fn(() => [] as unknown[]),
     deleteAnnotation: vi.fn(),
+    // Hoisted so a test can hold Cornerstone init open and let the studyUids
+    // watcher run before onMounted resumes.
+    initCornerstone: vi.fn().mockResolvedValue(undefined),
     annotationHistory: {
       undo: vi.fn(() => false),
       redo: vi.fn(() => false),
@@ -91,7 +95,7 @@ vi.mock("@orbidicom/core", () => {
     return null;
   };
   return {
-    initCornerstone: vi.fn().mockResolvedValue(undefined),
+    initCornerstone,
     setPrimaryTool,
     createStack: vi.fn(() => stack),
     readImageMetadata: vi.fn(async () => ({ patientName: "TEST^PATIENT", patientId: "ID1" })),
@@ -1061,22 +1065,92 @@ describe("multi-study lifecycle", () => {
   });
 
   // Minor — study-scoped actions must target what is open, not props.studyUids[0],
-  // which can name a study this session has already closed.
+  // which can name a study this session has already closed. Two cells, so the
+  // closed study's cell stays blank (another visible cell is still hung, so the
+  // re-hang below correctly leaves it alone) and the fallback is reached.
   it("targets a still-open study for the archive download when the active cell is blank", async () => {
     const downloadArchive = vi.fn();
+    const twoUp = () => ({ cellCount: 2, assignments: [0, 1] });
     const src = {
       ...twoStudySource(),
       capabilities: { downloadArchive: true, multiStudy: true, studySearch: true },
       downloadArchive,
     };
     // NEW is first in the prop *and* the study being closed.
-    const w = mount(Viewer, { props: { source: src as never, studyUids: ["NEW", "OLD"] } });
+    const w = mount(Viewer, {
+      props: {
+        source: src as never,
+        studyUids: ["NEW", "OLD"],
+        hangingProtocol: twoUp as never,
+      },
+    });
     await flushPromises();
-    rail(w).vm.$emit("close-study", "NEW");
+    rail(w).vm.$emit("close-study", "NEW"); // blanks cell 0, the active one
     await flushPromises();
     expect(uidsOf(w)).toEqual(["O1"]);
+    expect(rail(w).props("active")).toBe(-1); // active cell really is empty
 
     await w.find(".tbtn--download").trigger("click");
     expect(downloadArchive).toHaveBeenCalledWith("OLD");
+  });
+
+  // Round-2 Important — the bootstrap fetch must not run once the watcher has
+  // claimed the session. DicomJsonDataSource and LocalDataSource read an empty
+  // uid list as "every study I hold", and those extra studies would land in the
+  // rail outside openStudyUids, where the close pass can never reach them.
+  function catchAllSource() {
+    const src = twoStudySource();
+    const inner = src.getSeries;
+    src.getSeries = async (uids: string[]) =>
+      uids.length ? inner(uids) : inner(["OLD", "NEW", "MID"]);
+    return src;
+  }
+
+  it("does not bootstrap-fetch every study when the watcher claimed the session first", async () => {
+    const src = catchAllSource();
+    // Hold Cornerstone init open so the watcher runs before onMounted resumes.
+    let ready!: () => void;
+    initCornerstone.mockReturnValueOnce(
+      new Promise<void>((r) => {
+        ready = r;
+      }),
+    );
+    const w = mount(Viewer, { props: { source: src as never, studyUids: ["OLD"] } });
+    await w.setProps({ studyUids: ["NEW"] });
+    await flushPromises();
+    ready();
+    await flushPromises();
+
+    // Only the requested study — no unrequested patient's series in the rail.
+    expect(uidsOf(w)).toEqual(["N1"]);
+  });
+
+  it("still bootstrap-fetches for a host that never passes studyUids", async () => {
+    const src = catchAllSource();
+    const w = mount(Viewer, { props: { source: src as never } });
+    await flushPromises();
+    // No uids to claim the session with, so the source decides what it holds.
+    expect(uidsOf(w)).toEqual(["N1", "M1", "O1"]);
+  });
+
+  // Round-2 residual — replacing one study with another must not leave a black
+  // stage. The merge sees a non-empty session so it doesn't re-hang, then the
+  // close pass blanks the old study's cell; at cellCount === 1 the "pick a
+  // series" chip is suppressed, so nothing at all would be on screen.
+  it("hangs the replacement when a host swaps one study for another", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD"] },
+    });
+    await flushPromises();
+    expect(rail(w).props("active")).toBe(0);
+    stack.setStack.mockClear();
+
+    await w.setProps({ studyUids: ["NEW"] });
+    await flushPromises();
+
+    expect(uidsOf(w)).toEqual(["N1"]);
+    expect(rail(w).props("active")).toBe(0);
+    expect(rail(w).props("displayed")).toEqual([0]);
+    expect(stack.setStack).toHaveBeenLastCalledWith(["N1-0", "N1-1", "N1-2"]);
   });
 });

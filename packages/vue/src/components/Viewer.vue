@@ -762,10 +762,17 @@ async function addStudies(uids: string[], initial = false) {
     if (!uid || openStudyUids.value.includes(uid) || pendingStudyUids.has(uid)) continue;
     if (!want.includes(uid)) want.push(uid); // a repeated uid is one study
   }
-  // The first load always hits the source, even with no uids: `studyUids` is
-  // optional, and a local-file or single-study backend ignores the argument and
-  // returns whatever it holds. Later calls with nothing new to fetch are no-ops.
-  if (!want.length && !initial) return;
+  // The bootstrap load hits the source even with no uids: `studyUids` is optional,
+  // and a local-file or single-study backend ignores the argument and returns
+  // whatever it holds. Only while the session is genuinely unclaimed, though —
+  // the watcher can beat onMounted (a prop change, or just a parent re-render
+  // passing a fresh array literal, during Cornerstone init), and then an empty
+  // getSeries([]) means "every study you have" to DicomJson/Local. Those extra
+  // studies would merge into the rail while `want` leaves openStudyUids empty,
+  // so the close pass — which only iterates openStudyUids — could never remove
+  // them: another patient's series, stuck in the rail for the session.
+  const unclaimed = !openStudyUids.value.length && !pendingStudyUids.size && !series.value.length;
+  if (!want.length && !(initial && unclaimed)) return;
   for (const uid of want) pendingStudyUids.add(uid);
   let added: SeriesSummary[];
   try {
@@ -797,6 +804,24 @@ async function addStudies(uids: string[], initial = false) {
   // user work to preserve — hang the new set rather than leaving the stage blank
   // until the user clicks a rail row.
   if (wasEmpty && series.value.length) await applyInitialLayout();
+  ensureSomethingShown();
+}
+
+/**
+ * Put something on screen when the session holds series but no visible cell does.
+ *
+ * Non-destructive on purpose, which is what makes it safe where applyInitialLayout
+ * is not: it resets no annotation history, clears no key images or segmentation
+ * toggles, and leaves cellCount/activeCell alone — it only fills a cell that is
+ * already empty. Without it, replacing study A with study B (mount hangs A, the
+ * merge sees a non-empty session so it doesn't hang B, then the close pass blanks
+ * A's cell) leaves a black stage: at cellCount === 1 even the "pick a series" chip
+ * is suppressed by its own cellCount > 1 guard.
+ */
+function ensureSomethingShown() {
+  if (!series.value.length) return;
+  for (let c = 0; c < MAX_CELLS; c++) if (isVisible(c) && seriesIdx[c] >= 0) return;
+  void loadIntoCell(activeCell.value, 0);
 }
 
 /**
@@ -917,6 +942,7 @@ function closeStudy(uid: string) {
   for (const s of removed) loadedImageIds.delete(s.seriesInstanceUID);
   thumbnails.release(removed.map((s) => s.seriesInstanceUID));
   setOpenStudies(openStudyUids.value.filter((u) => u !== uid));
+  ensureSomethingShown();
 }
 
 const confirmCloseUid = ref<string | null>(null);
