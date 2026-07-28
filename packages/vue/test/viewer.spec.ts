@@ -1174,6 +1174,51 @@ describe("add-study affordance", () => {
     expect(w.find(".rail-add").exists()).toBe(false);
   });
 
+  // Each of the following pins one conjunct of canAddStudy in isolation: two
+  // capability flags advertised true plus (or minus) a real searchStudies
+  // function, such that deleting any single conjunct from the guard would let
+  // exactly one of these render a button it shouldn't.
+  it("is hidden when both capabilities are advertised but searchStudies is missing", async () => {
+    const w = mount(Viewer, {
+      props: {
+        source: { ...base, capabilities: { multiStudy: true, studySearch: true } } as never,
+        studyUids: ["ST"],
+      },
+    });
+    await flushPromises();
+    expect(w.find(".rail-add").exists()).toBe(false);
+  });
+
+  it("is hidden when multiStudy is false even with studySearch + searchStudies present", async () => {
+    const w = mount(Viewer, {
+      props: {
+        source: {
+          ...base,
+          capabilities: { multiStudy: false, studySearch: true },
+          searchStudies: async () => [],
+        } as never,
+        studyUids: ["ST"],
+      },
+    });
+    await flushPromises();
+    expect(w.find(".rail-add").exists()).toBe(false);
+  });
+
+  it("is hidden when studySearch is false even with multiStudy + searchStudies present", async () => {
+    const w = mount(Viewer, {
+      props: {
+        source: {
+          ...base,
+          capabilities: { multiStudy: true, studySearch: false },
+          searchStudies: async () => [],
+        } as never,
+        studyUids: ["ST"],
+      },
+    });
+    await flushPromises();
+    expect(w.find(".rail-add").exists()).toBe(false);
+  });
+
   it("is shown and opens the worklist overlay when the capability is advertised", async () => {
     const w = mount(Viewer, {
       props: {
