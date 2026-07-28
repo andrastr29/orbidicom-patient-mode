@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   readImageMetadata,
   readMetadataGroups,
+  dicomDate,
   type MetaGet,
   type MetaGroup,
 } from "../src/metadata";
@@ -102,6 +103,13 @@ describe("readImageMetadata", () => {
     });
     const m = await readImageMetadata("nifti:blob:x?frame=0", get);
     expect(m).toEqual({ modality: "NIfTI", rows: 256, columns: 256 });
+  });
+
+  it("exports dicomDate, handling the raw DA string and the pre-parsed object", () => {
+    expect(dicomDate("20240115")).toBe("2024-01-15");
+    expect(dicomDate({ year: 2024, month: 1, day: 5 })).toBe("2024-01-05");
+    expect(dicomDate("")).toBeUndefined();
+    expect(dicomDate(null)).toBeUndefined();
   });
 });
 

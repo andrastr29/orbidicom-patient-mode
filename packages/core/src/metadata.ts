@@ -61,7 +61,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
  * raw "YYYYMMDD" string, while the wadouri loader pre-parses it into
  * `{ year, month, day }` (dicomParser.parseDA). Both are handled.
  */
-function dicomDate(v: unknown): string | undefined {
+export function dicomDate(v: unknown): string | undefined {
   if (v == null || v === "") return undefined;
   if (typeof v === "object") {
     const o = v as { year?: number; month?: number; day?: number };

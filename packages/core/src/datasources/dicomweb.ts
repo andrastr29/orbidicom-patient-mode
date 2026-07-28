@@ -234,6 +234,17 @@ export class DicomWebDataSource implements DataSource {
       for (const s of list) {
         const modality = first(s, TAG.MODALITY);
         if (NON_RENDERABLE_MODALITIES.has(modality)) continue;
+        // Study-level attributes come back on the *series* QIDO response (PS3.18),
+        // so grouping the rail by study costs no extra request.
+        const study: NonNullable<SeriesSummary["study"]> = {};
+        const sd = first(s, TAG.STUDY_DATE);
+        if (sd) study.studyDate = sd;
+        const sdesc = first(s, TAG.STUDY_DESCRIPTION);
+        if (sdesc) study.studyDescription = sdesc;
+        const pn = personName(s, TAG.PATIENT_NAME);
+        if (pn) study.patientName = pn;
+        const pid = first(s, TAG.PATIENT_ID);
+        if (pid) study.patientId = pid;
         pairs.push({
           summary: {
             seriesInstanceUID: first(s, TAG.SERIES_UID),
@@ -243,6 +254,7 @@ export class DicomWebDataSource implements DataSource {
             // Optional QIDO field: undefined (not 0) when the PACS omits it, so a
             // missing count doesn't read as a zero-instance report and suppress previews.
             numberOfFrames: numOpt(s, TAG.NUM_SERIES_INSTANCES),
+            study,
           },
           number: num(s, TAG.SERIES_NUMBER),
         });

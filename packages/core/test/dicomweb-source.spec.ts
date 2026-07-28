@@ -110,6 +110,42 @@ describe("DicomWebDataSource", () => {
       "wadors:/pacs/dicom-web/studies/study-1/series/S1/instances/sop-1/frames/1",
     );
   });
+
+  it("fills study-level facts from the series-search response", async () => {
+    const client = {
+      searchForSeries: async () => [
+        {
+          "0020000E": { Value: ["S1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["CT"] },
+          "0008103E": { Value: ["Axial"] },
+          "00080020": { Value: ["20240115"] },
+          "00081030": { Value: ["CHEST CT"] },
+          "00100010": { Value: [{ Alphabetic: "DOE^JANE" }] },
+          "00100020": { Value: ["PID-7"] },
+        },
+      ],
+    };
+    const ds = new DicomWebDataSource({ root: "/dw", client: client as never });
+    const [s] = await ds.getSeries(["ST1"]);
+    expect(s.study).toEqual({
+      studyDate: "20240115",
+      studyDescription: "CHEST CT",
+      patientName: "DOE^JANE",
+      patientId: "PID-7",
+    });
+  });
+
+  it("omits absent study facts rather than storing empty strings", async () => {
+    const client = {
+      searchForSeries: async () => [
+        { "0020000E": { Value: ["S1"] }, "00080060": { Value: ["CT"] } },
+      ],
+    };
+    const ds = new DicomWebDataSource({ root: "/dw", client: client as never });
+    const [s] = await ds.getSeries(["ST1"]);
+    expect(s.study).toEqual({});
+  });
 });
 
 describe("DicomWebDataSource encapsulated PDFs", () => {

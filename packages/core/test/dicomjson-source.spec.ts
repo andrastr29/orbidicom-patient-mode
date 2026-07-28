@@ -109,4 +109,28 @@ describe("DicomJsonDataSource", () => {
     expect(meta.imageId).toBe(id);
     expect(meta["00080018"]).toEqual(V("sop-1"));
   });
+
+  it("fills study-level facts from instance metadata", async () => {
+    const ds = new DicomJsonDataSource({
+      metadata: [
+        {
+          "0020000D": { Value: ["ST1"] },
+          "0020000E": { Value: ["S1"] },
+          "00200011": { Value: [1] },
+          "00080060": { Value: ["MR"] },
+          "00080020": { Value: ["20231002"] },
+          "00081030": { Value: ["BRAIN MR"] },
+          "00100010": { Value: [{ Alphabetic: "ROE^RICHARD" }] },
+          "00100020": { Value: ["PID-9"] },
+        },
+      ],
+    });
+    const [s] = await ds.getSeries(["ST1"]);
+    expect(s.study).toEqual({
+      studyDate: "20231002",
+      studyDescription: "BRAIN MR",
+      patientName: "ROE^RICHARD",
+      patientId: "PID-9",
+    });
+  });
 });
