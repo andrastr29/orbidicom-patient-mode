@@ -7,6 +7,10 @@ const series = [
   { seriesInstanceUID: "S2", modality: "MR", seriesDescription: "", numberOfFrames: 30 },
 ];
 
+function providerStub(url: string | null) {
+  return { get: vi.fn(async () => url), release: vi.fn(), destroy: vi.fn() };
+}
+
 describe("SeriesRail", () => {
   it("renders a row per series with description/modality/count and emits select", async () => {
     const w = mount(SeriesRail, { props: { series, active: 0 } });
@@ -38,10 +42,6 @@ describe("SeriesRail", () => {
     expect(item.text()).toContain("DOC");
     expect(item.text()).not.toContain("img"); // no "· 0 img" for report series
   });
-
-  function providerStub(url: string | null) {
-    return { get: vi.fn(async () => url), release: vi.fn(), destroy: vi.fn() };
-  }
 
   it("shows the rendered thumbnail once the provider resolves a URL", async () => {
     const provider = providerStub("blob:mock/thumb");
@@ -233,14 +233,18 @@ describe("multi-study grouping", () => {
     expect(headers[1].text()).toContain("MR Brain prior");
   });
 
-  it("restarts series ordinals at 1 within each study", () => {
+  it("restarts series ordinals at 1 within each study", async () => {
     const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    // Group 2 collapses by default (Task 6); expand it to see its ordinal too.
+    await w.findAll(".rail__group-toggle")[1].trigger("click");
     const ords = w.findAll(".rail__ord").map((o) => o.text());
     expect(ords).toEqual(["1", "2", "1"]);
   });
 
   it("still emits the flat index on select, not a per-group index", async () => {
     const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    // Group 2 collapses by default (Task 6); expand it to reach its row.
+    await w.findAll(".rail__group-toggle")[1].trigger("click");
     await w.findAll(".rail__item")[2].trigger("click");
     expect(w.emitted("select")?.[0]).toEqual([2]);
   });
@@ -294,8 +298,10 @@ describe("multi-study grouping", () => {
   // which doesn't apply media queries — this instead pins the DOM structure the
   // mobile styles rely on: each group header sits immediately before its own
   // rows, in study order, with every series accounted for under the right group.
-  it("renders each group header immediately before its own rows, in study order", () => {
+  it("renders each group header immediately before its own rows, in study order", async () => {
     const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    // Group 2 collapses by default (Task 6); expand it to see its row in the DOM.
+    await w.findAll(".rail__group-toggle")[1].trigger("click");
     const kinds = Array.from(w.element.children).map((el) =>
       el.classList.contains("rail__group") ? "group" : "item",
     );
@@ -306,5 +312,48 @@ describe("multi-study grouping", () => {
     expect(items[0].text()).toContain("Ax T1");
     expect(items[1].text()).toContain("Ax T2");
     expect(items[2].text()).toContain("Ax T1 SE");
+  });
+
+  it("expands the first group and collapses the rest by default", () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    // Group 1 (2 series) is expanded; group 2's single row is not rendered.
+    expect(w.findAll(".rail__item").length).toBe(2);
+  });
+
+  it("expands a collapsed group when its header is clicked", async () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    await w.findAll(".rail__group-toggle")[1].trigger("click");
+    expect(w.findAll(".rail__item").length).toBe(3);
+  });
+
+  it("expands a non-first group that holds a displayed series", () => {
+    // A hanging protocol loaded the *older* study into a cell: its group must not
+    // start collapsed, or the row the user is looking at would be invisible.
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 2, displayed: [2] } });
+    expect(w.findAll(".rail__item").length).toBe(3);
+  });
+
+  it("does not re-default a group the user collapsed when a study is added", async () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    await w.findAll(".rail__group-toggle")[0].trigger("click"); // collapse group 1
+    expect(w.findAll(".rail__item").length).toBe(0);
+    const third = {
+      seriesInstanceUID: "X1",
+      studyInstanceUID: "THIRD",
+      modality: "CT",
+      numberOfFrames: 10,
+      study: { studyDate: "20200101", studyDescription: "Older still" },
+    };
+    await w.setProps({ series: [...twoStudies, third] });
+    // Group 1 stays collapsed (user's choice) and the new group starts collapsed.
+    expect(w.findAll(".rail__item").length).toBe(0);
+  });
+
+  it("requests no thumbnails for a collapsed group", async () => {
+    const provider = providerStub("blob:x");
+    mount(SeriesRail, { props: { series: twoStudies, active: 0, provider } });
+    await flushPromises();
+    // Only the 2 expanded rows resolve; the collapsed study's row is never rendered.
+    expect(provider.get).toHaveBeenCalledTimes(2);
   });
 });

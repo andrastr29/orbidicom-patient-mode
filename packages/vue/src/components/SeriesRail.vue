@@ -2,10 +2,28 @@
   <div class="rail">
     <template v-for="(g, gi) in groups" :key="g.uid || gi">
       <div v-if="grouped" class="rail__group">
-        <span class="rail__group-lines">
-          <span class="rail__group-title">{{ g.line1 }}</span>
-          <span v-if="g.line2" class="rail__group-sub">{{ g.line2 }}</span>
-        </span>
+        <button
+          class="rail__group-toggle"
+          type="button"
+          :aria-expanded="isExpanded(g, gi)"
+          @click="toggle(g, gi)"
+        >
+          <svg
+            class="rail__group-chev"
+            :class="{ 'rail__group-chev--open': isExpanded(g, gi) }"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            aria-hidden="true"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+          <span class="rail__group-lines">
+            <span class="rail__group-title">{{ g.line1 }}</span>
+            <span v-if="g.line2" class="rail__group-sub">{{ g.line2 }}</span>
+          </span>
+        </button>
         <span class="rail__group-count">{{ g.rows.length }}</span>
         <button
           class="rail__group-close"
@@ -27,7 +45,7 @@
       </div>
 
       <button
-        v-for="(r, ri) in g.rows"
+        v-for="(r, ri) in grouped && !isExpanded(g, gi) ? [] : g.rows"
         :key="r.s.seriesInstanceUID"
         class="rail__item"
         :class="{ 'rail__item--active': r.flat === active }"
@@ -86,6 +104,8 @@ import { t, formatDicomDate } from "../i18n";
 const props = defineProps<{
   series: SeriesSummary[];
   active: number;
+  /** Flat indices of every series currently shown in a cell. Defaults to [active]. */
+  displayed?: number[];
   provider?: ThumbnailProvider;
 }>();
 defineEmits<{ select: [number]; "close-study": [string] }>();
@@ -129,6 +149,26 @@ const groups = computed<Group[]>(() => {
     return { uid, rows, line1, line2 };
   });
 });
+
+// Collapse state per study UID, owned by the rail and session-scoped. An entry is
+// written once, the first time that study renders, and then never re-defaulted —
+// so appending a study can't reopen a group the user deliberately collapsed.
+const expanded = reactive<Record<string, boolean>>({});
+
+const displayedSet = computed(() => new Set(props.displayed ?? [props.active]));
+
+function isExpanded(g: Group, gi: number): boolean {
+  const known = expanded[g.uid];
+  if (known !== undefined) return known;
+  // First render of this study. Expand it when it is the newest study (first
+  // group), or when any of its series is on screen — a group that holds the row
+  // the user is looking at must never start hidden.
+  return gi === 0 || g.rows.some((r) => displayedSet.value.has(r.flat));
+}
+
+function toggle(g: Group, gi: number) {
+  expanded[g.uid] = !isExpanded(g, gi);
+}
 
 // The image count is only meaningful for image series. Report/document series
 // (e.g. an encapsulated PDF, modality DOC, 0 frames) show just the modality —
@@ -369,6 +409,30 @@ onUnmounted(() => io?.disconnect());
   background: var(--panel);
   z-index: 1;
 }
+.rail__group-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.rail__group-chev {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  color: var(--muted);
+  transform: rotate(-90deg);
+  transition: transform 0.12s;
+}
+.rail__group-chev--open {
+  transform: rotate(0deg);
+}
 .rail__group-lines {
   display: flex;
   flex-direction: column;
@@ -467,6 +531,9 @@ onUnmounted(() => io?.disconnect());
     border-right: 1px solid var(--border);
     position: static;
     top: auto;
+  }
+  .rail__group-toggle {
+    width: 100%;
   }
   .rail__group-lines {
     width: 100%;
