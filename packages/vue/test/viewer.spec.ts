@@ -128,6 +128,25 @@ vi.mock("@orbidicom/core", () => {
       const s = String(v);
       return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : s;
     },
+    // Mirrors core's study-order.ts: whole study blocks reordered newest-first,
+    // order *within* a study untouched, and the input returned unchanged when
+    // fewer than two distinct studies are present.
+    orderStudyGroups: <T extends { studyInstanceUID?: string; study?: { studyDate?: string } }>(
+      ser: T[],
+    ): T[] => {
+      const groups = new Map<string, T[]>();
+      for (const s of ser) {
+        const key = s.studyInstanceUID ?? "";
+        const g = groups.get(key);
+        if (g) g.push(s);
+        else groups.set(key, [s]);
+      }
+      if (groups.size < 2) return ser;
+      return [...groups.values()]
+        .map((list, order) => ({ list, order, date: list[0]?.study?.studyDate ?? "" }))
+        .sort((a, b) => (a.date !== b.date ? b.date.localeCompare(a.date) : a.order - b.order))
+        .flatMap((g) => g.list);
+    },
     // Honors a custom protocol function; any built-in name defaults to single view.
     applyHangingProtocol: (
       ser: unknown[],
@@ -651,5 +670,211 @@ describe("Viewer", () => {
     expect(w.find(".aipanel").exists()).toBe(true);
     await btn.trigger("click");
     expect(w.find(".aipanel").exists()).toBe(false);
+  });
+});
+
+describe("multi-study lifecycle", () => {
+  const mk = (uid: string, studyUid: string, date: string) => ({
+    seriesInstanceUID: uid,
+    studyInstanceUID: studyUid,
+    modality: "CT",
+    numberOfFrames: 3,
+    study: { studyDate: date, studyDescription: `Study ${studyUid}` },
+  });
+
+  function twoStudySource() {
+    const byStudy: Record<string, ReturnType<typeof mk>[]> = {
+      OLD: [mk("O1", "OLD", "20240101")],
+      NEW: [mk("N1", "NEW", "20260314")],
+    };
+    return {
+      capabilities: { downloadArchive: false, multiStudy: true, studySearch: true },
+      getSeries: async (uids: string[]) => uids.flatMap((u) => byStudy[u] ?? []),
+      getImageIds: async (s: { seriesInstanceUID: string }) => [
+        `${s.seriesInstanceUID}-a`,
+        `${s.seriesInstanceUID}-b`,
+        `${s.seriesInstanceUID}-c`,
+      ],
+      searchStudies: async () => [],
+    };
+  }
+  const rail = (w: ReturnType<typeof mount>) => w.findComponent({ name: "SeriesRail" });
+  const uidsOf = (w: ReturnType<typeof mount>) =>
+    (rail(w).props("series") as { seriesInstanceUID: string }[]).map((s) => s.seriesInstanceUID);
+
+  it("keeps a cell on the same series when a newer study is inserted above it", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD"] },
+    });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["O1"]);
+
+    // Newest-first ordering puts N1 at index 0, so the cell showing index 0 (O1)
+    // must follow O1 to its new index 1.
+    await w.setProps({ studyUids: ["OLD", "NEW"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1", "O1"]);
+    expect(rail(w).props("active")).toBe(1);
+  });
+
+  it("preserves the layout when adding a study", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD"], hangingProtocol: "single" },
+    });
+    await flushPromises();
+    const before = w.findComponent({ name: "Toolbar" }).props("layout");
+    await w.setProps({ studyUids: ["OLD", "NEW"] });
+    await flushPromises();
+    expect(w.findComponent({ name: "Toolbar" }).props("layout")).toBe(before);
+  });
+
+  it("emits update:studyUids when a study is added", async () => {
+    const w = mount(Viewer, { props: { source: twoStudySource() as never, studyUids: ["OLD"] } });
+    await flushPromises();
+    await w.setProps({ studyUids: ["OLD", "NEW"] });
+    await flushPromises();
+    const ev = w.emitted("update:studyUids");
+    expect(ev?.[ev.length - 1]).toEqual([["OLD", "NEW"]]);
+  });
+
+  it("is idempotent when the same study uid is added twice", async () => {
+    const src = twoStudySource();
+    const spy = vi.spyOn(src, "getSeries");
+    const w = mount(Viewer, { props: { source: src as never, studyUids: ["OLD"] } });
+    await flushPromises();
+    const after = spy.mock.calls.length;
+    await w.setProps({ studyUids: ["OLD", "OLD"] });
+    await flushPromises();
+    expect(spy.mock.calls.length).toBe(after);
+  });
+
+  it("passes every displayed series index to the rail", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    const displayed = rail(w).props("displayed") as number[];
+    expect(Array.isArray(displayed)).toBe(true);
+    expect(displayed.every((i) => i >= 0)).toBe(true);
+  });
+
+  it("removes the closed study's series and keeps other cells on their series", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1", "O1"]);
+    // Close the study at index 0, so O1 shifts from 1 to 0.
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["O1"]);
+  });
+
+  // The add path is covered above; this is the close-direction twin — a surviving
+  // cell whose series shifts DOWN when the block above it is removed. Without the
+  // remap this cell would keep index 1 (now out of range) or, with one more study
+  // open, silently render a different patient's scan.
+  it("re-points a surviving cell when the block above it is closed", async () => {
+    const twoUp = () => ({ cellCount: 2, assignments: [0, 1] });
+    const w = mount(Viewer, {
+      props: {
+        source: twoStudySource() as never,
+        studyUids: ["OLD", "NEW"],
+        hangingProtocol: twoUp as never,
+      },
+    });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1", "O1"]);
+    // Cell 1 holds O1 at flat index 1.
+    await w.findAll(".cell")[1].trigger("pointerdown");
+    expect(rail(w).props("active")).toBe(1);
+
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["O1"]);
+    // Cell 1 still shows O1 — now at flat index 0, not a stale 1.
+    expect(rail(w).props("active")).toBe(0);
+    // Cell 0's series is gone, so it is blank rather than pointing at O1 too.
+    expect(rail(w).props("displayed")).toEqual([0]);
+  });
+
+  // Mid-session adds must not re-run the hanging protocol (it would wipe key
+  // images and annotations) — but an EMPTY viewer has no such work to lose, and
+  // leaving the stage black after a study is added would look like a failed load.
+  it("hangs the first study added to an empty viewer", async () => {
+    const src = twoStudySource();
+    const spy = vi.spyOn(src, "getImageIds");
+    const w = mount(Viewer, { props: { source: src as never, studyUids: [] } });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual([]);
+
+    await w.setProps({ studyUids: ["NEW"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1"]);
+    expect(spy).toHaveBeenCalled();
+    expect(rail(w).props("active")).toBe(0);
+  });
+
+  it("emits update:studyUids on close", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    const ev = w.emitted("update:studyUids");
+    expect(ev?.[ev.length - 1]).toEqual([["OLD"]]);
+  });
+
+  it("releases the closed study's thumbnails", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    const provider = rail(w).props("provider") as { release: (u: string[]) => void };
+    const spy = vi.spyOn(provider, "release");
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(spy).toHaveBeenCalledWith(["N1"]);
+  });
+
+  it("closes immediately when the study has no annotations or key images", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(w.find(".modal").exists()).toBe(false);
+    expect(rail(w).props("series")).toHaveLength(1);
+  });
+
+  it("asks for confirmation when the study has key images, and closes only on confirm", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    // Flag the active cell's image as a key image, then close that study. Driven
+    // through the real toolbar button (as the pre-existing key-image test does)
+    // rather than a raw $emit, whose hyphenated name isn't what Toolbar declares.
+    await w.find(".tbtn--keyimage").trigger("click");
+    await flushPromises();
+    rail(w).vm.$emit("close-study", "NEW");
+    await flushPromises();
+    expect(w.find(".modal").exists()).toBe(true);
+    expect(rail(w).props("series")).toHaveLength(2); // not closed yet
+    await w.find(".modal__btn--danger").trigger("click");
+    await flushPromises();
+    expect(rail(w).props("series")).toHaveLength(1);
+  });
+
+  it("drops a study when it disappears from the studyUids prop", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD", "NEW"] },
+    });
+    await flushPromises();
+    await w.setProps({ studyUids: ["OLD"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["O1"]);
   });
 });

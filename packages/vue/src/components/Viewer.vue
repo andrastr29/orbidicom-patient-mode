@@ -46,8 +46,10 @@
         <SeriesRail
           :series="series"
           :active="seriesIdx[activeCell]"
+          :displayed="displayedSeriesIdx"
           :provider="thumbnails"
           @select="selectSeries"
+          @close-study="onCloseStudy"
         />
         <!-- DICOM-SEG: per-series segmentations, each toggled as a labelmap overlay. -->
         <div v-if="segmentations.length" class="segs">
@@ -248,6 +250,18 @@
       </div>
     </div>
 
+    <div v-if="confirmCloseUid" class="modal" @click.self="confirmCloseUid = null">
+      <div class="modal__card">
+        <p class="modal__msg">{{ t("confirmCloseStudy") }}</p>
+        <div class="modal__actions">
+          <button class="modal__btn" @click="confirmCloseUid = null">{{ t("cancel") }}</button>
+          <button class="modal__btn modal__btn--danger" @click="doCloseStudy">
+            {{ t("closeStudy") }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="confirmUploadSrOpen" class="modal" @click.self="!srUploadBusy && closeUploadSr()">
       <div class="modal__card">
         <p class="modal__msg">{{ srUploadMsg ?? t("confirmUploadSr") }}</p>
@@ -273,7 +287,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
 import Toolbar from "./Toolbar.vue";
 import SeriesRail from "./SeriesRail.vue";
 import Controls from "./Controls.vue";
@@ -310,6 +324,7 @@ import {
   VR_PRESETS,
   defaultVrPreset,
   applyHangingProtocol,
+  orderStudyGroups,
   importResults,
   applyResultSet,
   removeApplied,
@@ -368,6 +383,12 @@ const props = defineProps<{
   /** Per-deployment feature toggles (from runtime config). */
   features?: { aiResults?: boolean };
 }>();
+/**
+ * `studyUids` is a two-way surface: hosts can bind `v-model:study-uids` and see
+ * the built-in affordances (the rail's close button, Task 9's study picker) move
+ * the open set, not only their own prop writes.
+ */
+const emit = defineEmits<{ "update:studyUids": [string[]] }>();
 const series = ref<SeriesSummary[]>([]);
 // One shared preview provider for the rail (LRU-cached, lazy). Cheap to create —
 // it allocates no DOM/viewport until a series actually needs a client render.
@@ -441,6 +462,57 @@ const els: (HTMLDivElement | null)[] = fill(null);
 const stacks: (StackHandle | null)[] = fill(null);
 const cellImageIds: string[][] = Array.from({ length: MAX_CELLS }, () => []);
 const tokens = fill(0);
+
+/**
+ * Clear one cell back to "empty": its series is gone, so drop the stack, the
+ * per-cell reactive state and any report view. The grid already renders an
+ * empty-cell placeholder for seriesIdx === -1.
+ */
+function blankCell(i: number) {
+  // Invalidate any in-flight load for this cell (same guard loadIntoCell uses).
+  tokens[i]++;
+  stopCine(i);
+  clearPdf(i);
+  // Destroy, don't just forget: the handle owns this cell's viewport on the shared
+  // rendering engine, and its canvas keeps painting the last rendered slice. The
+  // empty-cell placeholder is a transparent chip, so a leaked viewport would leave
+  // the *closed study's image* on screen. ensureStack() rebuilds a fresh handle on
+  // the next load into this cell.
+  stacks[i]?.destroy();
+  stacks[i] = null;
+  cellImageIds[i] = [];
+  seriesIdx[i] = -1;
+  sliceIndex[i] = 0;
+  sliceCount[i] = 0;
+  wl[i] = null;
+  meta[i] = null;
+  cellLoading[i] = false;
+  prefetchLoaded[i] = 0;
+  prefetchTotal[i] = 0;
+  imageVersion.value++;
+}
+
+/**
+ * Re-point every cell at the same *series* after `series.value` is reordered or
+ * filtered. seriesIdx holds positional indices, and newest-first ordering moves
+ * series on add as well as on close — so both paths must translate
+ * index -> UID -> new index. Cells whose series is gone are blanked.
+ */
+function remapCells(prev: SeriesSummary[], next: SeriesSummary[]) {
+  // null marks "this cell was already empty"; a cell pointing at a series that
+  // isn't in `prev` (shouldn't happen, but the arrays are independent) yields ""
+  // and is treated as gone rather than silently kept at a stale index.
+  const before = seriesIdx.map((i) => (i >= 0 ? (prev[i]?.seriesInstanceUID ?? "") : null));
+  const pos = new Map(next.map((s, i) => [s.seriesInstanceUID, i]));
+  for (let c = 0; c < MAX_CELLS; c++) {
+    const uid = before[c];
+    if (uid === null) continue; // cell was already empty
+    const at = pos.get(uid);
+    if (at == null) blankCell(c);
+    else seriesIdx[c] = at;
+  }
+}
+
 // Unsubscribe from the global annotation-change listener (set on mount).
 let unsubscribeMeasurements: (() => void) | null = null;
 // Annotation undo/redo: stack-change subscription + Cornerstone event wiring teardown.
@@ -452,6 +524,9 @@ let stopHistory: (() => void) | null = null;
 // display:none and excluded from the CSS grid's auto-flow.
 const isVisible = (i: number) =>
   cellCount.value === 1 ? i === activeCell.value : i < cellCount.value;
+// Flat indices of every series on screen (not just the active cell) — the rail
+// keeps a group expanded when it holds one of these.
+const displayedSeriesIdx = computed(() => seriesIdx.filter((si, c) => si >= 0 && isVisible(c)));
 const gridClass = computed(
   () => `grid--n${cellCount.value}${gridStacked.value ? " grid--n2-stacked" : ""}`,
 );
@@ -636,6 +711,134 @@ async function toggleSegmentation(seg: SegmentationInstance) {
   } catch {
     /* leave the toggle off — a real failure surfaces in the console/network tab */
   }
+}
+
+// --- Multi-study session ----------------------------------------------------
+// Studies can be added and closed mid-session. `series.value` stays a single flat
+// list ordered newest-study-first (orderStudyGroups), so every mutation moves the
+// positional indices seriesIdx holds — remapCells re-points the cells by UID.
+const openStudyUids = ref<string[]>([]);
+
+/** Single writer for the open set, so hosts binding v-model:study-uids see add
+ *  and close from the built-in affordances too — not only their own prop. */
+function setOpenStudies(uids: string[]) {
+  openStudyUids.value = uids;
+  emit("update:studyUids", uids);
+}
+
+/**
+ * Load another study into the session. Deliberately NOT applyInitialLayout():
+ * that resets annotation history, clears key images and segmentation toggles and
+ * re-runs the hanging protocol — right on mount, destructive mid-session. Adding
+ * a study preserves annotations, key images, window/level, cellCount and
+ * activeCell; only array positions move, which remapCells absorbs.
+ */
+async function addStudy(uid: string) {
+  if (!uid || openStudyUids.value.includes(uid)) return; // idempotent
+  const added = await props.source.getSeries([uid]);
+  if (!added.length) return;
+  // Nothing on screen (mounted with no study, or every study since closed) means
+  // there is no user work to preserve — so the new study gets the hanging protocol
+  // rather than leaving the stage blank until the user clicks a rail row.
+  const wasEmpty = seriesIdx.every((si) => si < 0);
+  const prev = series.value;
+  const next = orderStudyGroups([...prev, ...added]);
+  remapCells(prev, next);
+  series.value = next;
+  setOpenStudies([...openStudyUids.value, uid]);
+  if (wasEmpty) await applyInitialLayout();
+}
+
+// props.studyUids is reactive: a host can add or drop studies mid-session. The
+// diff is idempotent, so re-entering it (e.g. after our own update:studyUids)
+// loads nothing twice.
+watch(
+  () => props.studyUids,
+  async (next) => {
+    const want = next ?? [];
+    for (const uid of want) if (!openStudyUids.value.includes(uid)) await addStudy(uid);
+    for (const uid of [...openStudyUids.value]) if (!want.includes(uid)) closeStudy(uid);
+  },
+);
+
+/** imageIds the viewer has actually resolved for these series. Only a series that
+ *  was loaded into a cell has imageIds, and only those can carry user work. */
+function loadedImageIdsFor(removed: SeriesSummary[]): Set<string> {
+  const uids = new Set(removed.map((s) => s.seriesInstanceUID));
+  const ids = new Set<string>();
+  for (let c = 0; c < MAX_CELLS; c++) {
+    const si = seriesIdx[c];
+    const s = si >= 0 ? series.value[si] : undefined;
+    if (s && uids.has(s.seriesInstanceUID)) for (const id of cellImageIds[c]) ids.add(id);
+  }
+  return ids;
+}
+
+/**
+ * Discard the closed study's user work, so a measurement export can never
+ * reference a study that is no longer open. History is reset rather than trimmed:
+ * AnnotationHistory exposes only reset(), and a partial history that can redo a
+ * measurement onto a closed study is worse than none — the same reasoning as
+ * doClearAnnotations.
+ */
+function purgeUserWork(removed: SeriesSummary[]) {
+  const ids = loadedImageIdsFor(removed);
+  if (!ids.size) return;
+  for (const m of collectMeasurements()) {
+    if (ids.has(m.imageId)) deleteAnnotation(m.annotationUID);
+  }
+  for (const id of ids) keyImages.delete(id);
+  annotationHistory.reset();
+  refreshAllAnnotations();
+}
+
+/**
+ * Forget the closed study's segmentation toggles. `shownSegs` is keyed by SOP
+ * Instance UID, not series UID, so the only way back to the right keys is to
+ * re-list each removed series through the same source call that produced them.
+ * Rebuilding the set from the `segmentations` computed would be wrong: that only
+ * covers the ACTIVE cell's series, so it would drop toggles that belong to studies
+ * which are still open.
+ */
+function dropSegmentationsFor(removed: SeriesSummary[]) {
+  if (!shownSegs.size) return;
+  for (const s of removed) {
+    for (const seg of props.source.listSegmentations?.(s) ?? []) shownSegs.delete(seg.sopUid);
+  }
+}
+
+function closeStudy(uid: string) {
+  const removed = series.value.filter((s) => s.studyInstanceUID === uid);
+  if (!removed.length) return;
+  const prev = series.value;
+  const next = prev.filter((s) => s.studyInstanceUID !== uid);
+  // Purge before remapping: it reads cellImageIds/seriesIdx as they are now.
+  purgeUserWork(removed);
+  dropSegmentationsFor(removed);
+  remapCells(prev, next);
+  series.value = next;
+  thumbnails.release(removed.map((s) => s.seriesInstanceUID));
+  setOpenStudies(openStudyUids.value.filter((u) => u !== uid));
+}
+
+const confirmCloseUid = ref<string | null>(null);
+
+/** Close is destructive, so it asks first — but only when there is something to
+ *  lose. Dismissing a prior you merely glanced at stays frictionless. */
+function onCloseStudy(uid: string) {
+  const removed = series.value.filter((s) => s.studyInstanceUID === uid);
+  const ids = loadedImageIdsFor(removed);
+  const hasWork =
+    [...ids].some((id) => keyImages.has(id)) ||
+    collectMeasurements().some((m) => ids.has(m.imageId));
+  if (hasWork) confirmCloseUid.value = uid;
+  else closeStudy(uid);
+}
+
+function doCloseStudy() {
+  const uid = confirmCloseUid.value;
+  confirmCloseUid.value = null;
+  if (uid) closeStudy(uid);
 }
 
 // --- AI & Results (Phase 1) -------------------------------------------------
@@ -1128,7 +1331,11 @@ onMounted(async () => {
   stopHistory = startAnnotationHistory();
   unsubscribeHistory = annotationHistory.subscribe(() => historyVersion.value++);
   await initCornerstone();
-  series.value = await props.source.getSeries(props.studyUids ?? []);
+  // Normalize the initial load the same way addStudy does, so `series.value` is
+  // newest-study-first from the very first render regardless of what order a
+  // particular DataSource returns a multi-study request in.
+  series.value = orderStudyGroups(await props.source.getSeries(props.studyUids ?? []));
+  setOpenStudies([...(props.studyUids ?? [])]);
   if (series.value.length) await applyInitialLayout();
 });
 
