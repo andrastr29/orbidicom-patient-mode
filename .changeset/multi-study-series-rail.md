@@ -6,8 +6,14 @@
 Group the series rail by study when more than one study is open.
 
 - `SeriesSummary` carries optional study-level facts (`study.studyDate`,
-  `studyDescription`, `patientName`, `patientId`), filled by the DICOMweb and
-  DICOM-JSON sources from data they already fetch.
+  `studyDescription`, `patientName`, `patientId`), filled by the DICOMweb,
+  DICOM-JSON and local-file sources from data they already parse.
+- `LocalDataSource` now groups dropped files by `StudyInstanceUID` instead of
+  merging everything into one synthetic study, and advertises
+  `multiStudy: true` — so a folder or archive holding a current exam and its
+  prior opens as two study groups offline, with no PACS. Files carrying no
+  `StudyInstanceUID` still fall back to the synthetic `"local"` study, and a
+  single-study drop is unchanged.
 - Series are returned newest-study-first with each study's series contiguous,
   instead of interleaving series numbers across studies.
 - The rail renders collapsible per-study sections with per-study ordinals; a

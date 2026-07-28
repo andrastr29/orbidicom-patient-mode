@@ -164,7 +164,136 @@ describe("LocalDataSource", () => {
   it("returns [] for an unknown series and advertises a no-PACS capability set", async () => {
     const ds = new LocalDataSource({ parseFile, addFile: () => "dicomfile:x" });
     expect(await ds.getImageIds({ seriesInstanceUID: "nope" })).toEqual([]);
-    expect(ds.capabilities).toMatchObject({ downloadArchive: false, multiStudy: false });
+    // multiStudy: a dropped folder can hold several studies. studySearch stays
+    // absent — there is no worklist to query, so no add-study button appears.
+    expect(ds.capabilities).toMatchObject({ downloadArchive: false, multiStudy: true });
+    expect(ds.capabilities.studySearch).toBeFalsy();
+  });
+});
+
+describe("LocalDataSource multi-study", () => {
+  const twoStudies: Record<string, LocalTags> = {
+    "old1.dcm": {
+      seriesInstanceUID: "O1",
+      seriesNumber: 1,
+      modality: "MR",
+      seriesDescription: "Ax T1 SE",
+      sopInstanceUID: "o1",
+      instanceNumber: 1,
+      studyInstanceUID: "STUDY_OLD",
+      studyDate: "20241102",
+      studyDescription: "MR Brain prior",
+      patientName: "DOE^JANE",
+      patientId: "PID-1",
+    },
+    "new1.dcm": {
+      seriesInstanceUID: "N1",
+      seriesNumber: 1,
+      modality: "MR",
+      seriesDescription: "Ax T1 MPRAGE",
+      sopInstanceUID: "n1",
+      instanceNumber: 1,
+      studyInstanceUID: "STUDY_NEW",
+      studyDate: "20260314",
+      studyDescription: "MR Brain",
+      patientName: "DOE^JANE",
+      patientId: "PID-1",
+    },
+    "new2.dcm": {
+      seriesInstanceUID: "N2",
+      seriesNumber: 2,
+      modality: "MR",
+      seriesDescription: "Ax T2 FLAIR",
+      sopInstanceUID: "n2",
+      instanceNumber: 1,
+      studyInstanceUID: "STUDY_NEW",
+      studyDate: "20260314",
+      studyDescription: "MR Brain",
+      patientName: "DOE^JANE",
+      patientId: "PID-1",
+    },
+  };
+  const parseTwo = async (f: File): Promise<LocalTags> => {
+    const t = twoStudies[f.name];
+    if (!t) throw new Error("not a DICOM file");
+    return t;
+  };
+
+  it("keeps each study's series separate instead of merging them into one", async () => {
+    let n = 0;
+    const ds = new LocalDataSource({ parseFile: parseTwo, addFile: () => `dicomfile:${n++}` });
+    await ds.addFiles([file("old1.dcm"), file("new1.dcm"), file("new2.dcm")]);
+    const series = await ds.getSeries([]);
+    expect(series.map((s) => s.studyInstanceUID)).toEqual(["STUDY_NEW", "STUDY_NEW", "STUDY_OLD"]);
+  });
+
+  it("returns the newest study first with its series contiguous and series-number ordered", async () => {
+    let n = 0;
+    const ds = new LocalDataSource({ parseFile: parseTwo, addFile: () => `dicomfile:${n++}` });
+    // Dropped oldest-first; the newer study must still come back first.
+    await ds.addFiles([file("old1.dcm"), file("new2.dcm"), file("new1.dcm")]);
+    const series = await ds.getSeries([]);
+    expect(series.map((s) => s.seriesInstanceUID)).toEqual(["N1", "N2", "O1"]);
+  });
+
+  it("carries study-level facts through for the rail's group headers", async () => {
+    const ds = new LocalDataSource({ parseFile: parseTwo, addFile: () => "dicomfile:0" });
+    await ds.addFiles([file("new1.dcm")]);
+    const [s] = await ds.getSeries([]);
+    expect(s.study).toEqual({
+      studyDate: "20260314",
+      studyDescription: "MR Brain",
+      patientName: "DOE^JANE",
+      patientId: "PID-1",
+    });
+  });
+
+  it("surfaces two patients as separate studies rather than silently merging them", async () => {
+    const twoPatients: Record<string, LocalTags> = {
+      "p1.dcm": {
+        ...twoStudies["new1.dcm"],
+        studyInstanceUID: "STUDY_A",
+        patientName: "DOE^JANE",
+        patientId: "PID-1",
+      },
+      "p2.dcm": {
+        ...twoStudies["old1.dcm"],
+        studyInstanceUID: "STUDY_B",
+        patientName: "ROE^RICHARD",
+        patientId: "PID-2",
+      },
+    };
+    let n = 0;
+    const ds = new LocalDataSource({
+      parseFile: async (f) => {
+        const t = twoPatients[f.name];
+        if (!t) throw new Error("not a DICOM file");
+        return t;
+      },
+      addFile: () => `dicomfile:${n++}`,
+    });
+    await ds.addFiles([file("p1.dcm"), file("p2.dcm")]);
+    const series = await ds.getSeries([]);
+    expect(new Set(series.map((s) => s.study?.patientName))).toEqual(
+      new Set(["DOE^JANE", "ROE^RICHARD"]),
+    );
+  });
+
+  it("falls back to the synthetic 'local' study when a file carries no StudyInstanceUID", async () => {
+    // Unchanged behavior for loose files: one group, exactly as before.
+    let n = 0;
+    const ds = new LocalDataSource({ parseFile, addFile: () => `dicomfile:${n++}` });
+    await ds.addFiles([file("a.dcm"), file("c.dcm")]);
+    const series = await ds.getSeries([]);
+    expect(series.every((s) => s.studyInstanceUID === "local")).toBe(true);
+    expect(series.map((s) => s.seriesInstanceUID)).toEqual(["S1", "S2"]);
+  });
+
+  it("omits absent study facts rather than storing empty strings", async () => {
+    const ds = new LocalDataSource({ parseFile, addFile: () => "dicomfile:0" });
+    await ds.addFiles([file("a.dcm")]);
+    const [s] = await ds.getSeries([]);
+    expect(s.study).toEqual({});
   });
 });
 
