@@ -1154,3 +1154,40 @@ describe("multi-study lifecycle", () => {
     expect(stack.setStack).toHaveBeenLastCalledWith(["N1-0", "N1-1", "N1-2"]);
   });
 });
+
+describe("add-study affordance", () => {
+  const base = {
+    getSeries: async () => [
+      { seriesInstanceUID: "S1", studyInstanceUID: "ST", modality: "CT", numberOfFrames: 2 },
+    ],
+    getImageIds: async () => ["S1-a", "S1-b"],
+  };
+
+  it("is hidden when the source doesn't advertise multiStudy + studySearch", async () => {
+    const w = mount(Viewer, {
+      props: {
+        source: { ...base, capabilities: { multiStudy: false, studySearch: false } } as never,
+        studyUids: ["ST"],
+      },
+    });
+    await flushPromises();
+    expect(w.find(".rail-add").exists()).toBe(false);
+  });
+
+  it("is shown and opens the worklist overlay when the capability is advertised", async () => {
+    const w = mount(Viewer, {
+      props: {
+        source: {
+          ...base,
+          capabilities: { multiStudy: true, studySearch: true },
+          searchStudies: async () => [],
+        } as never,
+        studyUids: ["ST"],
+      },
+    });
+    await flushPromises();
+    expect(w.find(".rail-add").exists()).toBe(true);
+    await w.find(".rail-add").trigger("click");
+    expect(w.findComponent({ name: "StudyList" }).exists()).toBe(true);
+  });
+});

@@ -81,4 +81,23 @@ describe("StudyList", () => {
     await flushPromises();
     expect(search).not.toHaveBeenCalled();
   });
+
+  it("disables rows for studies that are already open", async () => {
+    const source = {
+      capabilities: { studySearch: true },
+      searchStudies: async () => [
+        { studyInstanceUID: "A", patientName: "DOE^JANE", numberOfSeries: 2 },
+        { studyInstanceUID: "B", patientName: "DOE^JANE", numberOfSeries: 3 },
+      ],
+    };
+    const w = mount(StudyList, { props: { source: source as never, openUids: ["A"] } });
+    await w.find(".studylist__search").trigger("submit");
+    await flushPromises();
+    const rows = w.findAll(".studylist__row");
+    expect(rows[0].classes()).toContain("studylist__row--open");
+    await rows[0].trigger("click");
+    expect(w.emitted("open")).toBeUndefined(); // already-open row doesn't re-emit
+    await rows[1].trigger("click");
+    expect(w.emitted("open")?.[0]).toEqual(["B"]);
+  });
 });

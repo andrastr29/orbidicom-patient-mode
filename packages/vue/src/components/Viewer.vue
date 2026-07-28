@@ -51,6 +51,18 @@
           @select="selectSeries"
           @close-study="onCloseStudy"
         />
+        <button v-if="canAddStudy" class="rail-add" type="button" @click="addStudyOpen = true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span>{{ t("addStudy") }}</span>
+        </button>
         <!-- DICOM-SEG: per-series segmentations, each toggled as a labelmap overlay. -->
         <div v-if="segmentations.length" class="segs">
           <div class="segs__title">{{ t("segmentations") }}</div>
@@ -284,6 +296,15 @@
         </div>
       </div>
     </div>
+
+    <div v-if="addStudyOpen" class="modal" @click.self="addStudyOpen = false">
+      <div class="modal__card modal__card--wide">
+        <StudyList :source="source" :open-uids="openStudyUids" @open="onPickStudy" />
+        <div class="modal__actions">
+          <button class="modal__btn" @click="addStudyOpen = false">{{ t("cancel") }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
@@ -297,6 +318,7 @@ import PdfView from "./PdfView.vue";
 import SrView from "./SrView.vue";
 import AnnotationOverlay from "./AnnotationOverlay.vue";
 import AiResultsPanel from "./AiResultsPanel.vue";
+import StudyList from "./StudyList.vue";
 import {
   initCornerstone,
   setPrimaryTool,
@@ -568,6 +590,19 @@ const canCine = computed(() => sliceCount[activeCell.value] > 1);
 const canDownload = computed(
   () => !!props.source.capabilities.downloadArchive && !!props.source.downloadArchive,
 );
+// Branch on the advertised capability, never on backend type.
+const canAddStudy = computed(
+  () =>
+    !!props.source.capabilities?.multiStudy &&
+    !!props.source.capabilities?.studySearch &&
+    typeof props.source.searchStudies === "function",
+);
+const addStudyOpen = ref(false);
+
+async function onPickStudy(uid: string) {
+  addStudyOpen.value = false;
+  await addStudies([uid]);
+}
 // Slice export needs a rendered image stack. Report/SR/PDF and empty cells never
 // set a positive sliceCount, so this is false for them (same signal as canCine).
 const canDownloadImage = computed(() => sliceCount[activeCell.value] > 0);
@@ -2006,6 +2041,34 @@ onUnmounted(() => {
 .modal__btn--primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.modal__card--wide {
+  width: min(720px, 92vw);
+}
+
+.rail-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 8px 0;
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rail-add:hover {
+  background: var(--elevated);
+  color: var(--text);
+}
+.rail-add svg {
+  width: 13px;
+  height: 13px;
 }
 
 @media (max-width: 640px) {
