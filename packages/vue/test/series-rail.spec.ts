@@ -289,4 +289,22 @@ describe("multi-study grouping", () => {
     await w.findAll(".rail__group-close")[1].trigger("click");
     expect(w.emitted("close-study")?.[0]).toEqual(["OLD"]);
   });
+
+  // CSS-only concern (mobile layout for .rail__group) isn't testable in jsdom,
+  // which doesn't apply media queries — this instead pins the DOM structure the
+  // mobile styles rely on: each group header sits immediately before its own
+  // rows, in study order, with every series accounted for under the right group.
+  it("renders each group header immediately before its own rows, in study order", () => {
+    const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
+    const kinds = Array.from(w.element.children).map((el) =>
+      el.classList.contains("rail__group") ? "group" : "item",
+    );
+    expect(kinds).toEqual(["group", "item", "item", "group", "item"]);
+
+    const items = w.findAll(".rail__item");
+    expect(items).toHaveLength(3);
+    expect(items[0].text()).toContain("Ax T1");
+    expect(items[1].text()).toContain("Ax T2");
+    expect(items[2].text()).toContain("Ax T1 SE");
+  });
 });

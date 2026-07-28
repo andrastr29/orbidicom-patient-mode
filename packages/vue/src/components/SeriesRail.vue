@@ -450,5 +450,38 @@ onUnmounted(() => io?.disconnect());
   .rail__name {
     max-width: 64px;
   }
+
+  /* A sticky row-header doesn't work once the rail is a horizontal strip: there's
+     no "above the rows" to stick to, and the desktop -8px offset assumes the
+     vertical layout's 8px padding (mobile uses 6px). Instead render each group
+     header as its own narrow, non-shrinking tile in the flow, right before that
+     study's rows — a vertical divider between studies rather than a banner. */
+  .rail__group {
+    flex: none;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    width: 84px;
+    padding: 6px;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    position: static;
+    top: auto;
+  }
+  .rail__group-lines {
+    width: 100%;
+  }
+  .rail__group-title,
+  .rail__group-sub {
+    max-width: 100%;
+  }
+  .rail__group-count {
+    margin-inline-start: 0;
+    margin-top: 2px;
+  }
+  .rail__group-close {
+    align-self: flex-end;
+    margin-top: 2px;
+  }
 }
 </style>
