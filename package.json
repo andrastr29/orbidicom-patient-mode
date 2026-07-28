@@ -14,6 +14,7 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "tsc -b --pretty",
+    "dev": "pnpm --filter @orbidicom/demo dev",
     "demo": "pnpm --filter @orbidicom/demo dev",
     "changeset": "changeset",
     "release": "pnpm -r publish --access public --no-git-checks"
