@@ -21,12 +21,20 @@
         </svg>
         <span>{{ t("hint") }}</span>
       </p>
+      <!-- About: which build of the viewer is running. Untranslated on purpose —
+           the product name and a semver string read the same in every locale, and
+           dir="ltr" keeps them in that order inside an RTL layout. -->
+      <p class="dock__about" dir="ltr">
+        <span class="dock__about-name">OrbiDICOM</span>
+        <span class="dock__about-version">v{{ VERSION }}</span>
+      </p>
     </div>
   </div>
 </template>
 <script setup lang="ts">
 import LangSwitcher from "./LangSwitcher.vue";
 import { t } from "../i18n";
+import { VERSION } from "../version";
 
 // `open` is parent-controlled: it only matters on phones, where the panel is a
 // dropdown toggled by the header hamburger. On desktop the panel is always shown
@@ -71,6 +79,28 @@ defineProps<{ open?: boolean }>();
   width: 14px;
   height: 14px;
   opacity: 0.8;
+}
+/* Sits under a hairline at the very bottom of the cluster — present, but the
+   quietest thing in the rail. */
+.dock__about {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 2px 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-family: var(--font);
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--hush);
+}
+.dock__about-name {
+  letter-spacing: 0.02em;
+}
+.dock__about-version {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 640px) {

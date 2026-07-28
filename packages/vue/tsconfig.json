@@ -3,7 +3,9 @@
   "compilerOptions": {
     "noEmit": true,
     "jsx": "preserve",
-    "noUncheckedIndexedAccess": false
+    "noUncheckedIndexedAccess": false,
+    // src/version.ts reads the package version out of package.json.
+    "resolveJsonModule": true
   },
-  "include": ["src"]
+  "include": ["src", "package.json"]
 }

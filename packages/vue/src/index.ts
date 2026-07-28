@@ -9,3 +9,4 @@ export { default as LangSwitcher } from "./components/LangSwitcher.vue";
 export { default as StudyList } from "./components/StudyList.vue";
 export { default as Controls } from "./components/Controls.vue";
 export { setLang, getLang, t, isRtl, dir, LOCALES, type I18nKey, type Locale } from "./i18n";
+export { VERSION } from "./version";
