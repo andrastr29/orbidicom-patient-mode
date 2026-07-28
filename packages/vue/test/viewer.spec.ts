@@ -1301,6 +1301,29 @@ describe("multi-study lifecycle", () => {
     expect(modal.find(".modal__msg").text()).toContain("Close this study?");
   });
 
+  // Final-review 6 — the must-NOT-run direction of the wasEmpty gate is pinned
+  // above; this pins the must-RUN one. Deleting the applyInitialLayout call
+  // otherwise leaves the suite green, because ensureSomethingShown fills a single
+  // cell and covers those assertions. Only applyInitialLayout can open a grid.
+  it("applies the hanging protocol to the first study added to an empty viewer", async () => {
+    const grid = () => ({ cellCount: 4, assignments: [0, 1, 2, 3] });
+    const w = mount(Viewer, {
+      props: {
+        source: fourSeriesSource() as never,
+        studyUids: [],
+        hangingProtocol: grid as never,
+      },
+    });
+    await flushPromises();
+    const layout = () => w.findComponent({ name: "Toolbar" }).props("layout");
+    expect(layout()).toBe(1);
+
+    await w.setProps({ studyUids: ["OLD"] });
+    await flushPromises();
+    expect(layout()).toBe(4);
+    expect(rail(w).props("displayed")).toEqual([0, 1, 2, 3]);
+  });
+
   // Round-2 residual — replacing one study with another must not leave a black
   // stage. The merge sees a non-empty session so it doesn't re-hang, then the
   // close pass blanks the old study's cell; at cellCount === 1 the "pick a
