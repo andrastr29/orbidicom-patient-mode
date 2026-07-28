@@ -601,6 +601,12 @@ const addStudyOpen = ref(false);
 
 async function onPickStudy(uid: string) {
   addStudyOpen.value = false;
+  // Record it as picker-owned BEFORE the fetch: a prop write landing mid-flight
+  // must not be able to treat it as a study the host dropped. Skipped when the
+  // prop already names it — then the host owns it and always has.
+  if (!openStudyUids.value.includes(uid) && !(props.studyUids ?? []).includes(uid)) {
+    pickedStudyUids.add(uid);
+  }
   await addStudies([uid]);
 }
 // Slice export needs a rendered image stack. Report/SR/PDF and empty cells never
@@ -781,6 +787,15 @@ function setOpenStudies(uids: string[]) {
 // and merge the same study's block twice.
 const pendingStudyUids = new Set<string>();
 
+// Studies opened from the built-in picker, which `studyUids` never named. The
+// close pass reads "absent from the prop" as "the host dropped it" — true for a
+// study the prop once carried, but a picker-opened one was never there, so an
+// uncontrolled host (one that binds :study-uids and ignores update:studyUids, as
+// the demo does) would silently destroy it, with its measurements and no confirm,
+// on its very next prop write — the watcher fires on identity, not content.
+// Ownership transfers to the host the moment its prop does name the study.
+const pickedStudyUids = new Set<string>();
+
 /**
  * Load one or more studies into the session, as a single source round trip. A
  * user-initiated single-study add (the study picker) calls `addStudies([uid])`.
@@ -876,7 +891,14 @@ async function syncOpenStudies(initial = false) {
   // A host that never passes `studyUids` isn't managing the set — close nothing.
   const latest = props.studyUids;
   if (!latest) return;
-  for (const uid of [...openStudyUids.value]) if (!latest.includes(uid)) closeStudy(uid);
+  for (const uid of [...openStudyUids.value]) {
+    if (latest.includes(uid)) {
+      pickedStudyUids.delete(uid); // the host now names it, so the host owns it
+      continue;
+    }
+    if (pickedStudyUids.has(uid)) continue; // picker-opened; the prop never had it
+    closeStudy(uid);
+  }
 }
 
 // props.studyUids is reactive: a host can add or drop studies mid-session. The
@@ -975,6 +997,7 @@ function closeStudy(uid: string) {
   remapCells(prev, next);
   series.value = next;
   for (const s of removed) loadedImageIds.delete(s.seriesInstanceUID);
+  pickedStudyUids.delete(uid);
   thumbnails.release(removed.map((s) => s.seriesInstanceUID));
   setOpenStudies(openStudyUids.value.filter((u) => u !== uid));
   ensureSomethingShown();

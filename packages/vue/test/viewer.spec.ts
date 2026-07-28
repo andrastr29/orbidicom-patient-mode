@@ -1203,6 +1203,54 @@ describe("multi-study lifecycle", () => {
     expect(rail(w).props("displayed")).toEqual([1, 2, 3, 4]);
   });
 
+  // Final-review 3 — the close pass reads "absent from the prop" as "the host
+  // dropped it", but a picker-opened study was never in the prop at all. An
+  // uncontrolled host (the shipped demo binds :study-uids one-way) would destroy
+  // it, with its measurements and no confirm, on its next prop write.
+  const picker = (w: ReturnType<typeof mount>) => w.findComponent({ name: "StudyList" });
+
+  it("keeps a picker-opened study when the host writes studyUids again", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD"] },
+    });
+    await flushPromises();
+    await w.find(".rail-add").trigger("click");
+    picker(w).vm.$emit("open", "MID");
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["M1", "O1"]);
+
+    // Same content, fresh array identity — exactly what openPacs() or any inline
+    // literal in a re-rendering parent produces.
+    await w.setProps({ studyUids: ["OLD"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["M1", "O1"]);
+
+    // And an unrelated prop change must not take it either.
+    await w.setProps({ studyUids: ["OLD", "NEW"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["N1", "M1", "O1"]);
+  });
+
+  it("hands a picker-opened study back to the host once the prop names it", async () => {
+    const w = mount(Viewer, {
+      props: { source: twoStudySource() as never, studyUids: ["OLD"] },
+    });
+    await flushPromises();
+    await w.find(".rail-add").trigger("click");
+    picker(w).vm.$emit("open", "MID");
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["M1", "O1"]);
+
+    // The host adopts it...
+    await w.setProps({ studyUids: ["OLD", "MID"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["M1", "O1"]);
+    // ...and may then drop it, because now it owns it.
+    await w.setProps({ studyUids: ["OLD"] });
+    await flushPromises();
+    expect(uidsOf(w)).toEqual(["O1"]);
+  });
+
   // Round-2 residual — replacing one study with another must not leave a black
   // stage. The merge sees a non-empty session so it doesn't re-hang, then the
   // close pass blanks the old study's cell; at cellCount === 1 the "pick a
