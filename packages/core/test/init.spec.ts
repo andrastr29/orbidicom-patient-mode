@@ -23,6 +23,7 @@ vi.mock("@cornerstonejs/core", () => ({
   init: h.coreInit,
   imageLoadPoolManager: { setMaxSimultaneousRequests: h.setMax },
   Enums: { RequestType: { Interaction: "interaction", Prefetch: "prefetch" } },
+  utilities: { roundNumber: (v: number) => String(Math.round(v * 100) / 100) },
 }));
 vi.mock("@cornerstonejs/dicom-image-loader", () => ({ init: vi.fn() }));
 vi.mock("@cornerstonejs/tools", () => {
@@ -50,7 +51,13 @@ vi.mock("@cornerstonejs/tools", () => {
   };
 });
 
-import { initCornerstone, setPrimaryTool, TOOLS, TOOL_GROUP_ID } from "../src/cornerstone/init";
+import {
+  initCornerstone,
+  setPrimaryTool,
+  probeTextLines,
+  TOOLS,
+  TOOL_GROUP_ID,
+} from "../src/cornerstone/init";
 
 describe("initCornerstone", () => {
   beforeEach(() => {
@@ -83,6 +90,14 @@ describe("initCornerstone", () => {
     expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Ellipse, undefined);
   });
 
+  it("labels the Probe with its value only, never the voxel index", async () => {
+    vi.resetModules();
+    const fresh = await import("../src/cornerstone/init");
+    await fresh.initCornerstone();
+    const call = h.tg.addTool.mock.calls.find((c) => c[0] === fresh.TOOLS.Probe);
+    expect(typeof (call?.[1] as { getTextLines?: unknown })?.getTextLines).toBe("function");
+  });
+
   it("gives the stack group the ReferenceLines display tool, with no bindings", async () => {
     vi.resetModules();
     const fresh = await import("../src/cornerstone/init");
@@ -102,5 +117,32 @@ describe("initCornerstone", () => {
     const activated = h.tg.setToolActive.mock.calls.map((c) => c[0]);
     expect(activated).toContain(TOOLS.Pan);
     expect(activated).toContain(TOOLS.Zoom);
+  });
+});
+
+describe("probeTextLines", () => {
+  const at = (stats: unknown) => probeTextLines({ cachedStats: { t1: stats } } as never, "t1");
+
+  it("renders the value with its modality unit and no coordinates", () => {
+    // Cornerstone's default leads with "(i, j, k)"; a probe is read for its value.
+    expect(at({ value: 42.123, modalityUnit: "HU", index: [1, 2, 3] })).toEqual(["42.12 HU"]);
+  });
+
+  it("renders one line per component for a multi-value (e.g. fused PT/CT) probe", () => {
+    expect(at({ value: [10, 20], modalityUnit: ["HU", "SUV"] })).toEqual(["10 HU", "20 SUV"]);
+  });
+
+  it("still renders the value when the voxel index is missing", () => {
+    // The stock formatter returns nothing at all in this case.
+    expect(at({ value: 7, modalityUnit: "HU" })).toEqual(["7 HU"]);
+  });
+
+  it("omits a missing unit rather than printing 'undefined'", () => {
+    expect(at({ value: 7 })).toEqual(["7"]);
+  });
+
+  it("renders nothing until the probe has a value", () => {
+    expect(at({ modalityUnit: "HU" })).toBeUndefined();
+    expect(at(undefined)).toBeUndefined();
   });
 });

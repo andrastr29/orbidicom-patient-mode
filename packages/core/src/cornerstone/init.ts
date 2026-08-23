@@ -1,4 +1,9 @@
-import { init as coreInit, imageLoadPoolManager, Enums as csCoreEnums } from "@cornerstonejs/core";
+import {
+  init as coreInit,
+  imageLoadPoolManager,
+  Enums as csCoreEnums,
+  utilities as csCoreUtils,
+} from "@cornerstonejs/core";
 // dicom-image-loader exposes init as a named export (also on the default object).
 import { init as dicomImageLoaderInit } from "@cornerstonejs/dicom-image-loader";
 import {
@@ -66,6 +71,40 @@ const ALL_TOOLS = [
   ProbeTool,
 ];
 
+/** The slice of a Probe annotation's cached stats the label needs. */
+interface ProbeStats {
+  value?: number | number[];
+  modalityUnit?: string | string[];
+}
+
+/**
+ * Probe label: the measured value, and nothing else.
+ *
+ * Cornerstone's default prints the voxel index `(i, j, k)` on the first line with
+ * the value underneath. The index is a developer's coordinate, not a reading. What
+ * a probe is FOR is the intensity at the point it marks (HU, signal, SUV), and the
+ * index only crowds the image beside it. Measurement export never read it either
+ * (see ./measurements.ts), so dropping the line loses nothing downstream.
+ *
+ * Also steadier than the default, which renders the whole label as nothing when
+ * the index is missing. The value is the point, so show it either way.
+ *
+ * Exported so a host can wrap or replace it through the tool group's
+ * `getTextLines` configuration.
+ */
+export function probeTextLines(
+  data: { cachedStats?: Record<string, ProbeStats | undefined> },
+  targetId: string,
+): string[] | undefined {
+  const stats = data?.cachedStats?.[targetId];
+  const value = stats?.value;
+  if (value === undefined || value === null) return undefined;
+  const unit = stats?.modalityUnit;
+  const unitAt = (i: number) => (Array.isArray(unit) ? unit[i] : unit);
+  const line = (v: number, u?: string) => `${csCoreUtils.roundNumber(v)}${u ? ` ${u}` : ""}`;
+  return Array.isArray(value) ? value.map((v, i) => line(v, unitAt(i))) : [line(value, unitAt(0))];
+}
+
 /**
  * Per-tool configuration applied when a tool joins the stack tool group. Tools
  * absent from the map join with their library defaults.
@@ -80,10 +119,12 @@ const ALL_TOOLS = [
  *   text box, drawing only the outline. That is the whole point of shipping it —
  *   EllipticalROI already covers "circle with numbers", so this is the
  *   draw-a-circle-and-say-nothing tool. See SHAPE_TOOLS in ./tool-names.
+ * - **Probe** — `getTextLines` drops the voxel-index line; see {@link probeTextLines}.
  */
 const TOOL_CONFIG: Record<string, Record<string, unknown>> = {
   [ZoomTool.toolName]: { pinchToZoom: false },
   [CircleROITool.toolName]: { calculateStats: false },
+  [ProbeTool.toolName]: { getTextLines: probeTextLines },
 };
 
 export async function initCornerstone(opts: InitOptions = {}): Promise<void> {
