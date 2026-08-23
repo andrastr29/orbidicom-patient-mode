@@ -1,6 +1,6 @@
 # @orbidicom/vue
 
-Vue 3 UI for [OrbiDICOM](https://github.com/docorbitapp/orbidicom) — a modern, mobile-responsive,
+Vue 3 UI for [OrbiDICOM](https://github.com/docorbitapp/orbidicom): a modern, mobile-responsive,
 multilingual DICOM viewer. Components: `Viewer`, `Toolbar`, `SeriesRail`, `MetaPanel`,
 `LangSwitcher`, `StudyList`, `Controls`, plus live i18n (20 built-in languages incl. RTL, searchable switcher) and
 CSS-variable theming.
@@ -14,29 +14,31 @@ Source and issues: <https://github.com/docorbitapp/orbidicom>
 
 ✅ shipped · ⬜ planned. Tiers and detail in [ROADMAP.md](https://github.com/docorbitapp/orbidicom/blob/main/ROADMAP.md).
 
-| Status | Capability                                                                                                                                                  |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅     | **2D viewing** — window/level, zoom, pan, slice scroll, rotate, flip, invert                                                                                |
-| ✅     | **Cine** playback — per cell, adjustable fps                                                                                                                |
-| ✅     | **Measurement tools** — length, angle, rectangle & ellipse ROI, probe                                                                                       |
-| ✅     | **Annotation undo/redo** — Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z + toolbar buttons (create & delete)                                                                |
-| ✅     | **Key-image flagging** — star toggle + count badge, `k` hotkey, JSON export                                                                                 |
-| ✅     | **DICOM-SEG segmentations** — per-series sidebar toggles, labelmap overlay (read-only, 2D stack)                                                            |
-| ✅     | **Keyboard shortcuts** — tools, transforms, slice nav, presets (remappable)                                                                                 |
-| ✅     | **W/L preset engine** — CT built-ins + modality-aware, host-extensible                                                                                      |
-| ✅     | **Grid layouts** — 1–10-up, each cell independent                                                                                                           |
-| ✅     | **Download slice as JPEG** — image + measurements (no patient text)                                                                                         |
-| ✅     | **Reports** — encapsulated PDF + DICOM Structured Report (SR)                                                                                               |
-| ✅     | **Metadata** — on-image overlay with privacy blur + full DICOM tag reader                                                                                   |
-| ✅     | **Renders from any [`DataSource`](https://github.com/docorbitapp/orbidicom/blob/main/packages/core/src/datasource.ts)** — UI never branches on backend type |
-| ✅     | **20 UI languages** (`setLang`, searchable `LangSwitcher`, RTL-aware) + CSS-variable theming                                                                |
-| ✅     | **MPR + 3D volume rendering (VR)** — tri-planar + crosshairs + VR presets (CT-Bone, MIP, …)                                                                 |
-| ✅     | **Measurement export** — JSON + CSV                                                                                                                         |
-| ✅     | **STOW-RS upload** — `storeInstances` (multipart/related)                                                                                                   |
-| ✅     | **DICOM-SR export** — measurement SR + Part-10 encoding & STOW-RS upload (capability-gated "Upload SR" button)                                              |
-| ✅     | **Hanging protocols** — `single` / `grid` built-ins + custom; `hanging-protocol` prop                                                                       |
-| ✅     | **Study list / worklist** — QIDO-RS `searchStudies` + a `<StudyList>` filter/results component                                                              |
-| ✅     | **Plugin SDK** — `registerPlugin` (tools / presets / data sources) + data-source factory registry                                                           |
+| Status | Capability                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | **2D viewing**: window/level, zoom, pan, slice scroll, rotate, flip, invert                                                                                    |
+| ✅     | **Cine** playback: per cell, adjustable fps                                                                                                                    |
+| ✅     | **Measurement tools**: length, angle, rectangle & ellipse ROI, probe (labelled with its value, not voxel coordinates)                                          |
+| ✅     | **Annotation undo/redo**: Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z + toolbar buttons (create & delete)                                                                    |
+| ✅     | **Key-image flagging**: star toggle + count badge, `k` hotkey, JSON export                                                                                     |
+| ✅     | **DICOM-SEG segmentations**: per-series sidebar toggles, labelmap overlay (read-only, 2D stack)                                                                |
+| ✅     | **Keyboard shortcuts**: tools, transforms, slice nav, presets (remappable)                                                                                     |
+| ✅     | **W/L preset engine**: CT built-ins + modality-aware, host-extensible                                                                                          |
+| ✅     | **Grid layouts**: 1–10-up, each cell independent                                                                                                               |
+| ✅     | **Linked viewports**: synchronized scrolling (position-based, so T1/T2 stay level) + reference lines from the focused cell, both toolbar toggles               |
+| ✅     | **Plain circle annotation**: a circle that reports no numbers, for pointing at a finding (`c`)                                                                 |
+| ✅     | **Download slice as JPEG**: image + measurements (no patient text)                                                                                             |
+| ✅     | **Reports**: encapsulated PDF + DICOM Structured Report (SR)                                                                                                   |
+| ✅     | **Metadata**: on-image overlay with privacy blur + full DICOM tag reader                                                                                       |
+| ✅     | **Renders from any [`DataSource`](https://github.com/docorbitapp/orbidicom/blob/main/packages/core/src/datasource.ts)**: the UI never branches on backend type |
+| ✅     | **20 UI languages** (`setLang`, searchable `LangSwitcher`, RTL-aware) + CSS-variable theming                                                                   |
+| ✅     | **MPR + 3D volume rendering (VR)**: tri-planar + crosshairs + VR presets (CT-Bone, MIP, …), one click from the toolbar                                         |
+| ✅     | **Measurement export**: JSON + CSV                                                                                                                             |
+| ✅     | **STOW-RS upload**: `storeInstances` (multipart/related)                                                                                                       |
+| ✅     | **DICOM-SR export**: measurement SR + Part-10 encoding & STOW-RS upload (capability-gated "Upload SR" button)                                                  |
+| ✅     | **Hanging protocols**: `single` / `grid` built-ins + custom; `hanging-protocol` prop                                                                           |
+| ✅     | **Study list / worklist**: QIDO-RS `searchStudies` + a `<StudyList>` filter/results component                                                                  |
+| ✅     | **Plugin SDK**: `registerPlugin` (tools / presets / data sources) + data-source factory registry                                                               |
 
 ## Install
 
@@ -45,7 +47,7 @@ npm install @orbidicom/vue @orbidicom/core vue
 ```
 
 > **Not embedding it in an app?** The [`orbidicom`](https://www.npmjs.com/package/orbidicom)
-> CLI serves this exact UI in one command — `npx orbidicom` (local files) or
+> CLI serves this exact UI in one command: `npx orbidicom` (local files) or
 > `npx orbidicom --pacs <url>` (any DICOMweb PACS). Use this package when you want
 > the `<Viewer>` inside your own Vue app, themed and wired to your data source.
 
@@ -53,9 +55,9 @@ npm install @orbidicom/vue @orbidicom/core vue
 
 Pick a data source from `@orbidicom/core`, pass it to `<Viewer>`. The available sources:
 
-- `DicomWebDataSource` — a DICOMweb PACS (QIDO + WADO-RS).
-- `LocalDataSource` — local files (`.dcm`, drag & drop, study folder / zip).
-- `NiftiDataSource` — a single `.nii` / `.nii.gz` volume.
+- `DicomWebDataSource`: a DICOMweb PACS (QIDO + WADO-RS).
+- `LocalDataSource`: local files (`.dcm`, drag & drop, study folder / zip).
+- `NiftiDataSource`: a single `.nii` / `.nii.gz` volume.
 
 ```vue
 <script setup lang="ts">
@@ -63,7 +65,7 @@ import { Viewer } from "@orbidicom/vue";
 import "@orbidicom/vue/theme.css";
 import { DicomWebDataSource } from "@orbidicom/core";
 
-// Point at a DICOMweb PACS (optionally with an auth strategy — discriminator is `kind`):
+// Point at a DICOMweb PACS (optionally with an auth strategy; the discriminator is `kind`):
 const source = new DicomWebDataSource({ root: "/dicom-web" });
 // const source = new DicomWebDataSource({ root: "/dicom-web", auth: { kind: "bearer", token } });
 
@@ -84,7 +86,7 @@ import { setLang } from "@orbidicom/vue";
 setLang("ja"); // en·tr·de·es·fr·it·pt·ru·zh·ja·ko·hi·id·nl·pl·ar·fa·bn·vi·uk (ar/fa are RTL)
 ```
 
-Open multiple series at once with a hanging protocol (`single` — default — or `grid`, or a
+Open multiple series at once with a hanging protocol (`single`, the default, or `grid`, or a
 custom function):
 
 ```vue
@@ -92,13 +94,13 @@ custom function):
 ```
 
 Implement your own backend by satisfying the `DataSource` contract in `@orbidicom/core`
-(`getSeries`, `getImageIds`, plus `capabilities`) — no UI changes needed.
+(`getSeries`, `getImageIds`, plus `capabilities`). No UI changes needed.
 
 ### Worklist → open a study
 
 `<StudyList>` renders a patient / ID / accession / modality filter form over a
-DICOMweb source's `searchStudies` and emits `open` with the chosen study UID —
-hand it straight to `<Viewer>`:
+DICOMweb source's `searchStudies` and emits `open` with the chosen study UID.
+Hand it straight to `<Viewer>`:
 
 ```vue
 <script setup lang="ts">
@@ -119,7 +121,7 @@ const studyUids = ref<string[]>([]);
 
 ### Theming
 
-The UI is styled entirely with CSS custom properties — override them on a wrapper
+The UI is styled entirely with CSS custom properties; override them on a wrapper
 (or `:root`) after importing `theme.css`. No build step or Sass needed:
 
 ```css
@@ -162,7 +164,7 @@ const keymap = { ...DEFAULT_KEYMAP, z: { kind: "tool", tool: "Zoom" } };
 
 English, Türkçe, Deutsch, Español, Français, Italiano, Português, Русский, 中文, 日本語,
 한국어, हिन्दी, Bahasa Indonesia, Nederlands, Polski, العربية, فارسی, বাংলা, Tiếng Việt,
-Українська — with a built-in **searchable** live switcher; the right-to-left languages
+Українська, with a built-in **searchable** live switcher; the right-to-left languages
 (Arabic, Persian) mirror the layout via a `dir` attribute. Adding one is a small string table; see the
 [add-a-locale guide](https://github.com/docorbitapp/orbidicom/tree/main/.claude/skills/add-a-locale).
 Missing keys fall back to English.
@@ -171,6 +173,6 @@ Missing keys fall back to English.
 
 MIT © OrbiDICOM contributors.
 
-"OrbiDICOM" and its logo are trademarks of DocOrbit — the MIT license covers the
+"OrbiDICOM" and its logo are trademarks of DocOrbit. The MIT license covers the
 source code, not the name or logo. Trademark, licensing, security, or commercial
 inquiries: **<info@docorbit.com>**.

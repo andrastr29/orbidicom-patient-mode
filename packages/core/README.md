@@ -1,6 +1,6 @@
 # @orbidicom/core
 
-Framework-agnostic engine for [OrbiDICOM](https://github.com/docorbitapp/orbidicom) — a modern,
+Framework-agnostic engine for [OrbiDICOM](https://github.com/docorbitapp/orbidicom): a modern,
 mobile-responsive DICOM viewer. Owns Cornerstone3D setup, the pluggable `DataSource` interface
 (PACS / DICOMweb / local files), auth strategies, and the tool/window-level preset registry.
 
@@ -10,18 +10,20 @@ Source and issues: <https://github.com/docorbitapp/orbidicom>
 
 ## What's inside
 
-- **Data sources** — `DicomWebDataSource` (QIDO/WADO-RS), `LocalDataSource` (`.dcm` files),
+- **Data sources**: `DicomWebDataSource` (QIDO/WADO-RS), `LocalDataSource` (`.dcm` files),
   `NiftiDataSource`, all implementing the pluggable [`DataSource`](src/datasource.ts) interface.
-- **Auth strategies** — `none` / `basic` / `bearer` / `cookie` / custom.
-- **Registries** — `registerTool` / `registerWindowPreset` and a modality-aware
+- **Auth strategies**: `none` / `basic` / `bearer` / `cookie` / custom.
+- **Registries**: `registerTool` / `registerWindowPreset` and a modality-aware
   `windowPresetsFor` preset engine.
-- **Keyboard shortcuts** — a framework-agnostic keymap (`DEFAULT_KEYMAP`, `resolveHotkey`,
+- **Keyboard shortcuts**: a framework-agnostic keymap (`DEFAULT_KEYMAP`, `resolveHotkey`,
   `resolveEditCommand` for undo/redo).
-- **Cornerstone3D setup** — `initCornerstone`, `createStack`, plus DICOM metadata + SR parsing.
-- **Annotations & reports** — measurement export (JSON/CSV) + DICOM-SR (`buildMeasurementSr`)
+- **Cornerstone3D setup**: `initCornerstone`, `createStack`, plus DICOM metadata + SR parsing.
+- **Linked viewports**: `createScrollSync` (position-based synchronized scrolling) and
+  `createReferenceLines` (draw the focused viewport's slice onto the others).
+- **Annotations & reports**: measurement export (JSON/CSV) + DICOM-SR (`buildMeasurementSr`)
   with Part-10 encoding (`dicomJsonToPart10`) for STOW-RS upload, plus create/delete undo/redo
   (`annotationHistory`) and key-image export (`keyImagesToJson`).
-- **DICOM-SEG** — parse + decode a SEG into per-image labelmaps (`getSegmentation`,
+- **DICOM-SEG**: parse + decode a SEG into per-image labelmaps (`getSegmentation`,
   `buildSegLabelmaps`) and render it over a stack (`StackHandle.showSegmentation`); read-only.
 
 ## Install
@@ -32,7 +34,7 @@ npm install @orbidicom/core
 
 > **Just want to look at images?** You don't need to write any code. The
 > [`orbidicom`](https://www.npmjs.com/package/orbidicom) CLI serves the full
-> viewer in one command — `npx orbidicom` for local files, or
+> viewer in one command: `npx orbidicom` for local files, or
 > `npx orbidicom --pacs <url>` against a DICOMweb PACS. Reach for `@orbidicom/core`
 > when you're embedding the engine in your own app or wiring a custom backend.
 
@@ -51,8 +53,8 @@ const imageIds = await source.getImageIds(series[0]);
 ### Authentication
 
 Every `DicomWebDataSource` takes an optional `auth` strategy (the discriminator
-is `kind`). `none` (default) and `cookie` add no `Authorization` header —
-`cookie` rides on `withCredentials` for a cross-origin session — while `basic`,
+is `kind`). `none` (default) and `cookie` add no `Authorization` header
+(`cookie` rides on `withCredentials` for a cross-origin session), while `basic`,
 `bearer`, and `custom` inject headers:
 
 ```ts
@@ -86,7 +88,7 @@ await nifti.addFile(niiFile);
 const json = new DicomJsonDataSource({ metadata, root: "/dicom-web" });
 ```
 
-…or add your own backend by implementing the `DataSource` contract — `getSeries`,
+…or add your own backend by implementing the `DataSource` contract: `getSeries`,
 `getImageIds`, optional `getMetadata` / `downloadArchive`, plus `capabilities`. The UI never
 branches on backend type, so a new backend is a new adapter, not a UI change:
 
@@ -116,7 +118,7 @@ windowPresetsFor("MR"); // → [{ modality: "MR", name: "Brain T2", … }]
 ### Search a worklist (QIDO-RS)
 
 DICOMweb sources advertise `capabilities.studySearch` and implement
-`searchStudies` — a `StudyQuery` in, `StudySummary[]` out:
+`searchStudies`: a `StudyQuery` in, `StudySummary[]` out:
 
 ```ts
 const studies = await source.searchStudies({
@@ -198,7 +200,7 @@ if (isVolumeCapable(series, imageIds.length)) {
 ## Plugins & data sources
 
 Bundle tools, window presets, and backend factories into a plugin and register them in one
-call — they fan out to the registries the UI reads from:
+call. They fan out to the registries the UI reads from:
 
 ```ts
 import { registerPlugin, createDataSource } from "@orbidicom/core";
@@ -225,6 +227,6 @@ MPR/volume rendering and brush/threshold editing.
 
 MIT © OrbiDICOM contributors.
 
-"OrbiDICOM" and its logo are trademarks of DocOrbit — the MIT license covers the
+"OrbiDICOM" and its logo are trademarks of DocOrbit. The MIT license covers the
 source code, not the name or logo. Trademark, licensing, security, or commercial
 inquiries: **<info@docorbit.com>**.
