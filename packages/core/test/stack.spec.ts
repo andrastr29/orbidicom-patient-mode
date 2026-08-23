@@ -79,6 +79,9 @@ vi.mock("@cornerstonejs/tools", () => {
     RectangleROITool: T("RectangleROI"),
     CircleROITool: T("CircleROI"),
     ProbeTool: T("Probe"),
+    CrosshairsTool: T("Crosshairs"),
+    TrackballRotateTool: T("TrackballRotate"),
+    ReferenceLinesTool: T("ReferenceLines"),
     ToolGroupManager: { getToolGroup: h.getToolGroup },
     utilities: {
       stackPrefetch: { enable: vi.fn(), disable: vi.fn() },
@@ -213,6 +216,27 @@ describe("createStack", () => {
     a.destroy();
     b.destroy();
     c.destroy();
+  });
+
+  it("can opt a viewport out of the tool group entirely (the offscreen thumbnailer)", () => {
+    const s = createStack(fakeEl(), {}, { toolGroupId: null });
+    const id = h.engine.enableElement.mock.calls[0][0].viewportId;
+    // It still gets a viewport on the shared engine — just no tool group, so
+    // display-only tools never draw into it.
+    expect(h.engine.enableElement).toHaveBeenCalledTimes(1);
+    expect(h.toolGroup.addViewport).not.toHaveBeenCalled();
+    s.destroy();
+    expect(h.engine.disableElement).toHaveBeenCalledWith(id);
+    expect(h.toolGroup.removeViewports).not.toHaveBeenCalled();
+  });
+
+  it("exposes its viewport id so engine-level APIs can address the cell", () => {
+    const a = createStack(fakeEl());
+    const b = createStack(fakeEl());
+    expect(a.getViewportId()).toBe(h.engine.enableElement.mock.calls[0][0].viewportId);
+    expect(a.getViewportId()).not.toBe(b.getViewportId());
+    a.destroy();
+    b.destroy();
   });
 
   it("destroy releases only this cell's viewport, tearing the engine down after the last", () => {

@@ -46,6 +46,7 @@ vi.mock("@cornerstonejs/tools", () => {
     ProbeTool: T("Probe"),
     CrosshairsTool: T("Crosshairs"),
     TrackballRotateTool: T("TrackballRotate"),
+    ReferenceLinesTool: T("ReferenceLines"),
   };
 });
 
@@ -80,6 +81,17 @@ describe("initCornerstone", () => {
     expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Zoom, { pinchToZoom: false });
     // Every other tool joins with library defaults — the measuring ROIs keep theirs.
     expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Ellipse, undefined);
+  });
+
+  it("gives the stack group the ReferenceLines display tool, with no bindings", async () => {
+    vi.resetModules();
+    const fresh = await import("../src/cornerstone/init");
+    await fresh.initCornerstone();
+    expect(h.addTool).toHaveBeenCalledWith(expect.objectContaining({ toolName: "ReferenceLines" }));
+    expect(h.tg.addTool).toHaveBeenCalledWith("ReferenceLines");
+    // Display-only: it must never be bound to a mouse button or touch gesture.
+    const activated = h.tg.setToolActive.mock.calls.map((c) => c[0]);
+    expect(activated).not.toContain("ReferenceLines");
   });
 
   it("setPrimaryTool clears all bindings then re-activates pan + zoom + the chosen tool", () => {

@@ -18,6 +18,7 @@ import {
   ProbeTool,
   CrosshairsTool,
   TrackballRotateTool,
+  ReferenceLinesTool,
 } from "@cornerstonejs/tools";
 import type { Types as CsToolsTypes } from "@cornerstonejs/tools";
 
@@ -118,11 +119,17 @@ export async function initCornerstone(opts: InitOptions = {}): Promise<void> {
   // below: crosshairs reslice the orthographic planes, trackball rotates the 3D pane.
   addTool(CrosshairsTool);
   addTool(TrackballRotateTool);
+  // ReferenceLinesTool joins the stack group (below) but stays Disabled until the
+  // UI names a source viewport — see cornerstone/reference-lines.ts.
+  addTool(ReferenceLinesTool);
 
   const tg = ToolGroupManager.createToolGroup(TOOL_GROUP_ID)!;
   for (const name of ALL_TOOLS.map((t) => t.toolName)) {
     tg.addTool(name, TOOL_CONFIG[name]);
   }
+  // A display-only tool: no bindings, and Disabled until reference-lines.ts turns
+  // it on. Added here so the group owns every tool it can ever show.
+  tg.addTool(ReferenceLinesTool.toolName);
 
   // Mouse: left=W/L, right=pan, left+right=zoom, wheel + middle-drag=scroll.
   // Touch: one finger drives the active tool (W/L by default), two fingers pan.

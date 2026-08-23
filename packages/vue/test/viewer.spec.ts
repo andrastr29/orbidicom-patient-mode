@@ -34,10 +34,17 @@ const {
   annotationHistory,
   scrollSync,
   createScrollSync,
+  refLines,
+  createReferenceLines,
 } = vi.hoisted(() => {
   const scrollSync = {
     setViewports: vi.fn(),
     getViewports: vi.fn(() => [] as string[]),
+    destroy: vi.fn(),
+  };
+  const refLines = {
+    setSource: vi.fn(),
+    getSource: vi.fn(() => null as string | null),
     destroy: vi.fn(),
   };
   const mprHandle = {
@@ -73,6 +80,8 @@ const {
     mprHandle,
     scrollSync,
     createScrollSync: vi.fn(() => scrollSync),
+    refLines,
+    createReferenceLines: vi.fn(() => refLines),
     // Fire onReady synchronously so the viewer's mprReady gate flips (the preset
     // picker is disabled until the volume is ready); the real handle fires it
     // after the volume builds.
@@ -143,6 +152,7 @@ vi.mock("@orbidicom/core", () => {
     subscribeOverlayReposition: vi.fn(() => () => {}),
     createMprView,
     createScrollSync,
+    createReferenceLines,
     createThumbnailProvider: vi.fn(() => ({
       get: vi.fn().mockResolvedValue(null),
       release: vi.fn(),
@@ -464,6 +474,47 @@ describe("Viewer", () => {
     await w.find(".layout__select").setValue("1");
     await flushPromises();
     expect(scrollSync.setViewports.mock.calls.at(-1)?.[0]).toEqual([]);
+  });
+
+  it("points the reference lines at the focused cell, and moves them when focus does", async () => {
+    const w = mount(Viewer, {
+      props: { source: syncSource() as never, hangingProtocol: twoUp as never },
+    });
+    await flushPromises();
+    expect(w.find(".tbtn--reflines").classes()).not.toContain("tbtn--active"); // off by default
+
+    await w.find(".tbtn--reflines").trigger("click");
+    await flushPromises();
+    const first = refLines.setSource.mock.calls.at(-1)?.[0] as string;
+    expect(first).toBeTruthy();
+
+    // Focusing the second cell makes it the source: the lines follow the reader.
+    await w.findAll(".cell")[1].trigger("pointerdown");
+    await flushPromises();
+    const second = refLines.setSource.mock.calls.at(-1)?.[0] as string;
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
+
+  it("turns the reference lines off on the second click and in single view", async () => {
+    const w = mount(Viewer, {
+      props: { source: syncSource() as never, hangingProtocol: twoUp as never },
+    });
+    await flushPromises();
+    await w.find(".tbtn--reflines").trigger("click");
+    await flushPromises();
+
+    await w.find(".tbtn--reflines").trigger("click");
+    await flushPromises();
+    expect(refLines.setSource).toHaveBeenLastCalledWith(null);
+
+    // Back on, then collapse to a single cell — nothing left to draw onto.
+    await w.find(".tbtn--reflines").trigger("click");
+    await flushPromises();
+    await w.find(".layout__select").setValue("1");
+    await flushPromises();
+    expect(refLines.setSource).toHaveBeenLastCalledWith(null);
+    expect(w.find(".tbtn--reflines").exists()).toBe(false);
   });
 
   it("collapses and re-expands the series rail via the rail toggle", async () => {

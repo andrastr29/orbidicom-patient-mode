@@ -42,7 +42,10 @@ export function createThumbnailer(opts: ThumbnailerOptions = {}): Thumbnailer {
       `pointer-events:none;visibility:hidden;`;
     document.body.appendChild(el);
     element = el;
-    handle = createStack(el);
+    // No tool group: thumbnails need no interaction, and staying out of the
+    // shared group keeps display-only tools (reference lines) from drawing into
+    // the captured JPEG.
+    handle = createStack(el, {}, { toolGroupId: null });
     return handle;
   }
 

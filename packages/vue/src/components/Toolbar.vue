@@ -221,7 +221,7 @@
 
     <!-- Multi-viewport reading aids. Hidden in single view, where they mean
          nothing — no second viewport to follow along. -->
-    <template v-if="canSyncScroll">
+    <template v-if="canLinkViewports">
       <button
         v-tip="t('syncScroll')"
         class="tbtn tbtn--sync"
@@ -240,6 +240,28 @@
           <rect x="2.5" y="4.5" width="8" height="15" rx="1.5" />
           <rect x="13.5" y="4.5" width="8" height="15" rx="1.5" />
           <path d="M2.5 12h8M13.5 12h8M10.5 12h3" />
+        </svg>
+      </button>
+      <button
+        v-tip="t('referenceLines')"
+        class="tbtn tbtn--reflines"
+        :class="{ 'tbtn--active': referenceLines }"
+        :aria-pressed="referenceLines ?? false"
+        @click="$emit('toggleReferenceLines')"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="2.5" y="4.5" width="8" height="15" rx="1.5" />
+          <rect x="13.5" y="4.5" width="8" height="15" rx="1.5" />
+          <!-- the focused slice, and where it cuts the neighbouring plane -->
+          <path d="M6.5 4.5v15" />
+          <path d="M13.5 12h8" stroke-dasharray="2.5 2" />
         </svg>
       </button>
     </template>
@@ -516,10 +538,15 @@ const props = defineProps<{
   mprActive?: boolean;
   /** Whether the 2-cell grid is stacked (2×1) rather than side-by-side (1×2). */
   stacked?: boolean;
-  /** Whether synchronized scrolling is offered (a multi-cell grid is shown). */
-  canSyncScroll?: boolean;
+  /**
+   * Whether the multi-viewport reading aids are offered at all (a multi-cell grid
+   * is on screen). Gates both toggles below.
+   */
+  canLinkViewports?: boolean;
   /** Whether synchronized scrolling is currently on. */
   syncScroll?: boolean;
+  /** Whether reference lines are currently on. */
+  referenceLines?: boolean;
   /** Whether the AI & Results panel is available (features.aiResults). */
   canAiResults?: boolean;
 }>();
@@ -538,6 +565,7 @@ const emit = defineEmits<{
   uploadSr: [];
   setLayout: [number | "mpr" | "2v"];
   toggleSyncScroll: [];
+  toggleReferenceLines: [];
   cycleOverlay: [];
   openMeta: [];
   toggleMenu: [];

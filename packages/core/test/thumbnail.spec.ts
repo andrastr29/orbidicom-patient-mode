@@ -32,6 +32,13 @@ describe("createThumbnailer", () => {
     expect(blob).toBeInstanceOf(Blob);
   });
 
+  it("keeps its offscreen viewport out of the shared tool group", async () => {
+    // Otherwise display-only tools (reference lines) would be drawn into the
+    // captured JPEG, which composites the annotation SVG layer.
+    await createThumbnailer().render("a");
+    expect(h.createStack).toHaveBeenCalledWith(expect.anything(), {}, { toolGroupId: null });
+  });
+
   it("reuses one offscreen viewport across renders", async () => {
     const t = createThumbnailer();
     await t.render("a");

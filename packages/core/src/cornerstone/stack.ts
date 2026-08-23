@@ -47,13 +47,15 @@ function acquireEngine(): RenderingEngine {
 
 // Remove one cell's viewport from the shared engine + tool group without
 // disturbing the others; destroy the engine only when it holds no more viewports.
-function releaseEngine(viewportId: string): void {
+function releaseEngine(viewportId: string, toolGroupId: string | null): void {
   const engine = sharedEngine;
   if (!engine) return;
-  try {
-    ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.removeViewports(SHARED_ENGINE_ID, viewportId);
-  } catch {
-    /* tool group already gone */
+  if (toolGroupId) {
+    try {
+      ToolGroupManager.getToolGroup(toolGroupId)?.removeViewports(SHARED_ENGINE_ID, viewportId);
+    } catch {
+      /* tool group already gone */
+    }
   }
   try {
     engine.disableElement(viewportId);
@@ -138,14 +140,34 @@ export interface StackHandle {
   destroy: () => void;
 }
 
-export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): StackHandle {
+export interface StackOptions {
+  /**
+   * Tool group this viewport joins, or `null` to join none. Defaults to the
+   * viewer's shared group.
+   *
+   * The offscreen thumbnailer passes `null`. It needs no interaction, and group
+   * membership is not free: display-only tools draw into *every* viewport in the
+   * group, so reference lines would be composited straight into the thumbnail
+   * JPEGs (captureSliceJpeg includes the annotation SVG layer).
+   */
+  toolGroupId?: string | null;
+}
+
+export function createStack(
+  element: HTMLDivElement,
+  cb: StackCallbacks = {},
+  opts: StackOptions = {},
+): StackHandle {
   const n = seq++;
   const viewportId = `stack-${n}`;
+  const toolGroupId = opts.toolGroupId === undefined ? TOOL_GROUP_ID : opts.toolGroupId;
   const engine = acquireEngine();
   engine.enableElement({ viewportId, type: Enums.ViewportType.STACK, element });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const vp = engine.getViewport(viewportId) as any;
-  ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.addViewport(viewportId, SHARED_ENGINE_ID);
+  if (toolGroupId) {
+    ToolGroupManager.getToolGroup(toolGroupId)?.addViewport(viewportId, SHARED_ENGINE_ID);
+  }
 
   let count = 0;
   let cineOn = false;
@@ -382,7 +404,7 @@ export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): S
       );
       // Remove just THIS cell's viewport; the shared engine (and its WebGL
       // contexts) lives on for the other cells until the last one is released.
-      releaseEngine(viewportId);
+      releaseEngine(viewportId, toolGroupId);
     },
   };
 }

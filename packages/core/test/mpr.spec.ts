@@ -64,6 +64,7 @@ vi.mock("@cornerstonejs/tools", () => {
     ProbeTool: T("Probe"),
     CrosshairsTool: T("Crosshairs"),
     TrackballRotateTool: T("TrackballRotate"),
+    ReferenceLinesTool: T("ReferenceLines"),
   };
 });
 vi.mock("@cornerstonejs/dicom-image-loader", () => ({
