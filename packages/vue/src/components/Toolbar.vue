@@ -601,6 +601,11 @@ const toolButtons: { name: string; titleKey: I18nKey; icon: string }[] = [
     icon: '<ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.7"/>',
   },
   {
+    name: TOOLS.Circle,
+    titleKey: "toolCircle",
+    icon: '<circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+  },
+  {
     name: TOOLS.Probe,
     titleKey: "toolProbe",
     icon: '<circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="currentColor" stroke-width="1.6"/>',

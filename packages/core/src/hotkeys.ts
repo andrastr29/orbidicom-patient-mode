@@ -14,6 +14,7 @@ export type ToolKey =
   | "Angle"
   | "Rectangle"
   | "Ellipse"
+  | "Circle"
   | "Probe";
 
 /** A resolved shortcut: what the UI should do for a pressed key. */
@@ -48,6 +49,7 @@ export const DEFAULT_KEYMAP: Keymap = {
   a: { kind: "tool", tool: "Angle" },
   b: { kind: "tool", tool: "Rectangle" },
   e: { kind: "tool", tool: "Ellipse" },
+  c: { kind: "tool", tool: "Circle" },
   d: { kind: "tool", tool: "Probe" },
   // View transforms.
   i: { kind: "invert" },

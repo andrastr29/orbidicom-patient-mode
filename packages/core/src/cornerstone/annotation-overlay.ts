@@ -8,9 +8,10 @@
  */
 import { annotation, Enums as csToolsEnums } from "@cornerstonejs/tools";
 import { eventTarget, Enums as csEnums } from "@cornerstonejs/core";
+import { ANNOTATION_TOOLS } from "./tool-names";
 
-/** Mirrors the tracked set in measurements.ts / annotation-history.ts. */
-const KNOWN_TOOLS = new Set(["Length", "Angle", "RectangleROI", "EllipticalROI", "Probe"]);
+/** Every user-drawn annotation gets a delete control — measurements and plain shapes. */
+const KNOWN_TOOLS = new Set<string>(ANNOTATION_TOOLS);
 
 /** Minimal annotation shape this module reads (avoids deep Cornerstone type coupling). */
 export interface OverlayAnnotation {

@@ -6,6 +6,7 @@ describe("resolveHotkey", () => {
     expect(resolveHotkey({ key: "z" })).toEqual({ kind: "tool", tool: "Zoom" });
     expect(resolveHotkey({ key: "W" })).toEqual({ kind: "tool", tool: "WindowLevel" });
     expect(resolveHotkey({ key: "b" })).toEqual({ kind: "tool", tool: "Rectangle" });
+    expect(resolveHotkey({ key: "c" })).toEqual({ kind: "tool", tool: "Circle" });
   });
 
   it("maps view-transform keys", () => {

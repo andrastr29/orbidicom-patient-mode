@@ -12,9 +12,10 @@
  */
 import { annotation, Enums as csToolsEnums } from "@cornerstonejs/tools";
 import { eventTarget } from "@cornerstonejs/core";
+import { ANNOTATION_TOOLS } from "./tool-names";
 
-/** The measurement tools whose create/delete we track (mirrors measurements.ts). */
-const KNOWN_TOOLS = new Set(["Length", "Angle", "RectangleROI", "EllipticalROI", "Probe"]);
+/** The drawing tools whose create/delete we track — measurements and plain shapes alike. */
+const KNOWN_TOOLS = new Set<string>(ANNOTATION_TOOLS);
 
 /** Minimal shape we read from a Cornerstone annotation (cloned opaquely otherwise). */
 export interface HistoryAnnotation {

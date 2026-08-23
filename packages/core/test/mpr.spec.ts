@@ -60,6 +60,7 @@ vi.mock("@cornerstonejs/tools", () => {
     AngleTool: T("Angle"),
     EllipticalROITool: T("EllipticalROI"),
     RectangleROITool: T("RectangleROI"),
+    CircleROITool: T("CircleROI"),
     ProbeTool: T("Probe"),
     CrosshairsTool: T("Crosshairs"),
     TrackballRotateTool: T("TrackballRotate"),

@@ -117,6 +117,11 @@ describe("collectMeasurements", () => {
     ]);
   });
 
+  it("skips plain shape annotations — a CircleROI measures nothing, so there is nothing to export", () => {
+    const got = collectMeasurements(() => [ann({ metadata: { toolName: "CircleROI" } })]);
+    expect(got).toEqual([]);
+  });
+
   it("skips unknown tools and auto-generated annotations, and never throws on malformed input", () => {
     const got = collectMeasurements(() => [
       ann({ metadata: { toolName: "SegmentationDisplay" } }),

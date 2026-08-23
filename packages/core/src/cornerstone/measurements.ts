@@ -13,6 +13,7 @@
 import { annotation } from "@cornerstonejs/tools";
 import { Enums as csToolsEnums } from "@cornerstonejs/tools";
 import { eventTarget } from "@cornerstonejs/core";
+import { MEASUREMENT_TOOLS } from "./tool-names";
 
 /** One per-target statistic (a tool may emit several, keyed by target id). */
 export interface MeasurementStat {
@@ -37,7 +38,9 @@ export interface Measurement {
   points: [number, number, number][];
 }
 
-const KNOWN_TOOLS = new Set(["Length", "Angle", "RectangleROI", "EllipticalROI", "Probe"]);
+// Measurement export covers only tools that yield a value — plain shape
+// annotations (SHAPE_TOOLS) are deliberately excluded, they measure nothing.
+const KNOWN_TOOLS = new Set<string>(MEASUREMENT_TOOLS);
 
 /** Minimal shape we read from a Cornerstone annotation (avoids deep type coupling). */
 interface RawAnnotation {

@@ -163,6 +163,18 @@ describe("Toolbar", () => {
     expect(w.emitted("tool")).toBeTruthy();
   });
 
+  it("offers the plain circle annotation next to the measuring ROIs", async () => {
+    const w = mount(Toolbar, {
+      props: { modality: "MR", activeTool: "WindowLevel", layout: 1 },
+    });
+    const circle = w
+      .findAll("button.tbtn")
+      .find((b) => b.attributes("data-tip") === "Circle (no measurements)")!;
+    expect(circle).toBeTruthy();
+    await circle.trigger("click");
+    expect(w.emitted("tool")?.[0]).toEqual(["CircleROI"]);
+  });
+
   it("emits toggleMenu from the header hamburger", async () => {
     const w = mount(Toolbar, {
       props: { modality: "MR", activeTool: "WindowLevel", layout: 1, menuOpen: false },

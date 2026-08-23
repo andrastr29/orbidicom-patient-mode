@@ -42,6 +42,7 @@ vi.mock("@cornerstonejs/tools", () => {
     AngleTool: T("Angle"),
     EllipticalROITool: T("EllipticalROI"),
     RectangleROITool: T("RectangleROI"),
+    CircleROITool: T("CircleROI"),
     ProbeTool: T("Probe"),
     CrosshairsTool: T("Crosshairs"),
     TrackballRotateTool: T("TrackballRotate"),
@@ -64,6 +65,21 @@ describe("initCornerstone", () => {
     await initCornerstone();
     expect(h.coreInit).toHaveBeenCalledTimes(1);
     expect(h.toolsInit).toHaveBeenCalledTimes(1);
+  });
+
+  it("configures the tool group per tool: plain circle, single-finger zoom", async () => {
+    // initCornerstone() is idempotent, so the module imported at the top of this
+    // file has already done its wiring by now. Re-import it fresh to observe the
+    // one-time tool-group setup.
+    vi.resetModules();
+    const fresh = await import("../src/cornerstone/init");
+    await fresh.initCornerstone();
+    // CircleROI ships as the *annotation* circle: no stats pass, so no value text box.
+    expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Circle, { calculateStats: false });
+    // Zoom keeps its single-finger drag override.
+    expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Zoom, { pinchToZoom: false });
+    // Every other tool joins with library defaults — the measuring ROIs keep theirs.
+    expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Ellipse, undefined);
   });
 
   it("setPrimaryTool clears all bindings then re-activates pan + zoom + the chosen tool", () => {

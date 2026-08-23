@@ -14,6 +14,7 @@ import {
   AngleTool,
   EllipticalROITool,
   RectangleROITool,
+  CircleROITool,
   ProbeTool,
   CrosshairsTool,
   TrackballRotateTool,
@@ -60,8 +61,29 @@ const ALL_TOOLS = [
   AngleTool,
   EllipticalROITool,
   RectangleROITool,
+  CircleROITool,
   ProbeTool,
 ];
+
+/**
+ * Per-tool configuration applied when a tool joins the stack tool group. Tools
+ * absent from the map join with their library defaults.
+ *
+ * - **Zoom** — `pinchToZoom:false` makes Zoom's touchDragCallback the plain
+ *   vertical-drag zoom (same as the mouse), so a single finger zooms when Zoom is
+ *   the active tool, matching every other one-finger tool. The default
+ *   (`pinchToZoom:true`) only zooms on a two-finger pinch and ignores
+ *   single-touch drags entirely.
+ * - **CircleROI** — `calculateStats:false` turns the ROI into a plain circle
+ *   *annotation*: the tool skips the statistics pass AND the linked measurement
+ *   text box, drawing only the outline. That is the whole point of shipping it —
+ *   EllipticalROI already covers "circle with numbers", so this is the
+ *   draw-a-circle-and-say-nothing tool. See SHAPE_TOOLS in ./tool-names.
+ */
+const TOOL_CONFIG: Record<string, Record<string, unknown>> = {
+  [ZoomTool.toolName]: { pinchToZoom: false },
+  [CircleROITool.toolName]: { calculateStats: false },
+};
 
 export async function initCornerstone(opts: InitOptions = {}): Promise<void> {
   if (started) return;
@@ -98,12 +120,8 @@ export async function initCornerstone(opts: InitOptions = {}): Promise<void> {
   addTool(TrackballRotateTool);
 
   const tg = ToolGroupManager.createToolGroup(TOOL_GROUP_ID)!;
-  // pinchToZoom:false makes Zoom's touchDragCallback the plain vertical-drag zoom
-  // (same as the mouse), so a single finger zooms when Zoom is the active tool —
-  // matching every other one-finger tool. The default (pinchToZoom:true) only
-  // zooms on a two-finger pinch and ignores single-touch drags entirely.
   for (const name of ALL_TOOLS.map((t) => t.toolName)) {
-    tg.addTool(name, name === ZoomTool.toolName ? { pinchToZoom: false } : undefined);
+    tg.addTool(name, TOOL_CONFIG[name]);
   }
 
   // Mouse: left=W/L, right=pan, left+right=zoom, wheel + middle-drag=scroll.
@@ -133,6 +151,8 @@ export const TOOLS = {
   Angle: AngleTool.toolName,
   Rectangle: RectangleROITool.toolName,
   Ellipse: EllipticalROITool.toolName,
+  /** A plain circle with no measurements — see TOOL_CONFIG above. */
+  Circle: CircleROITool.toolName,
   Probe: ProbeTool.toolName,
 } as const;
 

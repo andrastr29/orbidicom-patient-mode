@@ -11,6 +11,7 @@ export * from "./keyimages";
 export * from "./dicom-encode";
 export * from "./metadata";
 export * from "./thumbnails";
+export * from "./cornerstone/tool-names";
 export * from "./cornerstone/init";
 export * from "./cornerstone/stack";
 export * from "./cornerstone/thumbnail";
