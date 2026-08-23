@@ -1,5 +1,70 @@
 # @orbidicom/core
 
+## 0.13.0
+
+### Minor Changes
+
+- [`20cb66e`](https://github.com/docorbitapp/orbidicom/commit/20cb66e23678fd58a3259b9c76ef6d7e49508b89) Thanks [@gasci](https://github.com/gasci)! - Add a plain circle annotation tool (`C`). It draws a circle and nothing else: no
+  area, no mean, no text box, for pointing at a finding without cluttering the
+  image. The measuring ROIs (ellipse, rectangle) are unchanged.
+
+  Internally, the tool-name sets that measurement export, undo/redo and the delete
+  overlay each kept privately are now declared once in `cornerstone/tool-names.ts`
+  (`MEASUREMENT_TOOLS`, `SHAPE_TOOLS`, `ANNOTATION_TOOLS`). Circles are undoable and
+  deletable like any drawing, and deliberately excluded from measurement export.
+
+- [`420927b`](https://github.com/docorbitapp/orbidicom/commit/420927bf3f1f88ae3129983fd0e596e39fb00d45) Thanks [@gasci](https://github.com/gasci)! - The probe now labels its point with the measured value alone. Cornerstone's default
+  prints the voxel index `(i, j, k)` on the first line and the value underneath; the
+  index is a developer's coordinate, not a reading, and it crowded the image next to
+  the number the probe exists to show. Measurement export never read it, so JSON, CSV
+  and DICOM-SR output are unchanged.
+
+  The label is also steadier than the stock one, which rendered nothing at all when
+  the index was missing. `probeTextLines` is exported so a host can wrap or replace it.
+
+- [`cd87fd6`](https://github.com/docorbitapp/orbidicom/commit/cd87fd63688ebe6116265ce0db99e7d6deee44ad) Thanks [@gasci](https://github.com/gasci)! - Add reference lines: while you scroll the focused grid cell, the other cells draw
+  a line showing where that slice cuts through them: scroll an axial series on the
+  left and the coronal on the right marks the level. Toggled from the toolbar and
+  off by default, because the line is genuinely in the way on some studies.
+
+  Nothing is drawn for parallel planes (axial ↔ axial has no meaningful
+  intersection) or across viewports that share no frame of reference.
+
+  `createStack` now takes an options argument with `toolGroupId`, and the offscreen
+  thumbnailer passes `null`: a viewport in the shared tool group is a target for
+  display-only tools, so reference lines would otherwise be composited into the
+  thumbnail JPEGs.
+
+- [`7a8dc01`](https://github.com/docorbitapp/orbidicom/commit/7a8dc010115f99d8def92f73b4da56acb94a666f) Thanks [@gasci](https://github.com/gasci)! - Add synchronized scrolling across grid cells: scroll one viewport and the other
+  coplanar ones follow to the same anatomical level. The sync is position-based
+  (`imagePositionPatient`), not index-based, so two series with different slice
+  counts or spacing (T1 and T2 side by side) stay aligned instead of drifting.
+  Series with no shared frame of reference are spatially registered on the fly.
+
+  Off by default, toggled from the toolbar, and offered only when a multi-cell grid
+  is on screen. `createScrollSync` in core owns the synchronizer's lifetime and
+  membership; `StackHandle.getViewportId()` and `STACK_ENGINE_ID` are now exported
+  so a viewport can be addressed in engine-level APIs.
+
+### Patch Changes
+
+- [`9fa8b0c`](https://github.com/docorbitapp/orbidicom/commit/9fa8b0cebeaf96ed1115012992b31f89af12a801) Thanks [@gasci](https://github.com/gasci)! - Fix the missing delete control on circle and probe annotations. Cornerstone stamps
+  every annotation with the placeholder `textBox.worldPosition = [0, 0, 0]` and only
+  `renderLinkedTextBoxAnnotation` replaces it, which `Probe` never calls (it draws
+  its value straight onto the canvas) and a plain circle never reaches (it runs with
+  `calculateStats: false`). The overlay anchored on that placeholder, so the "x" was
+  rendered at the patient-coordinate origin, off-image and unclickable.
+
+  The overlay now checks whether the text box was actually placed instead of listing
+  which tools place one, and falls back to the annotation's last handle point: a
+  circle's rim, a probe's point.
+
+- [`4f7f4e4`](https://github.com/docorbitapp/orbidicom/commit/4f7f4e4c7c071dee6e7c30c00a1e7393a4f875ad) Thanks [@gasci](https://github.com/gasci)! - Document the new viewer features in the package READMEs (linked viewports, the plain
+  circle annotation, the value-only probe label, MPR reachable from the toolbar), and
+  drop the em dash from every string the user actually reads. Each locale now uses its
+  own punctuation: a full stop, a danda for Hindi and Bengali, `。` for Chinese and
+  Japanese, and the Arabic comma where a comma is what the sentence needs.
+
 ## 0.12.2
 
 ## 0.12.1

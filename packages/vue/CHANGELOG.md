@@ -1,5 +1,59 @@
 # @orbidicom/vue
 
+## 0.13.0
+
+### Minor Changes
+
+- [`e15f835`](https://github.com/docorbitapp/orbidicom/commit/e15f83501b8a614a0f8573d5047fb3d395f1ad49) Thanks [@gasci](https://github.com/gasci)! - Surface MPR / 3D as its own toolbar button. The reconstruction (three linked
+  orthographic planes plus a volume-rendering pane) already existed, but only as an
+  entry inside the grid-layout dropdown, where nobody found it. The button toggles:
+  into MPR, and back out to whichever grid was showing, including the stacked 2×1
+  variant. It is disabled, with an explanatory tooltip, for series that cannot be
+  reconstructed. The dropdown entry stays.
+
+- [`20cb66e`](https://github.com/docorbitapp/orbidicom/commit/20cb66e23678fd58a3259b9c76ef6d7e49508b89) Thanks [@gasci](https://github.com/gasci)! - Add a plain circle annotation tool (`C`). It draws a circle and nothing else: no
+  area, no mean, no text box, for pointing at a finding without cluttering the
+  image. The measuring ROIs (ellipse, rectangle) are unchanged.
+
+  Internally, the tool-name sets that measurement export, undo/redo and the delete
+  overlay each kept privately are now declared once in `cornerstone/tool-names.ts`
+  (`MEASUREMENT_TOOLS`, `SHAPE_TOOLS`, `ANNOTATION_TOOLS`). Circles are undoable and
+  deletable like any drawing, and deliberately excluded from measurement export.
+
+- [`cd87fd6`](https://github.com/docorbitapp/orbidicom/commit/cd87fd63688ebe6116265ce0db99e7d6deee44ad) Thanks [@gasci](https://github.com/gasci)! - Add reference lines: while you scroll the focused grid cell, the other cells draw
+  a line showing where that slice cuts through them: scroll an axial series on the
+  left and the coronal on the right marks the level. Toggled from the toolbar and
+  off by default, because the line is genuinely in the way on some studies.
+
+  Nothing is drawn for parallel planes (axial ↔ axial has no meaningful
+  intersection) or across viewports that share no frame of reference.
+
+  `createStack` now takes an options argument with `toolGroupId`, and the offscreen
+  thumbnailer passes `null`: a viewport in the shared tool group is a target for
+  display-only tools, so reference lines would otherwise be composited into the
+  thumbnail JPEGs.
+
+- [`7a8dc01`](https://github.com/docorbitapp/orbidicom/commit/7a8dc010115f99d8def92f73b4da56acb94a666f) Thanks [@gasci](https://github.com/gasci)! - Add synchronized scrolling across grid cells: scroll one viewport and the other
+  coplanar ones follow to the same anatomical level. The sync is position-based
+  (`imagePositionPatient`), not index-based, so two series with different slice
+  counts or spacing (T1 and T2 side by side) stay aligned instead of drifting.
+  Series with no shared frame of reference are spatially registered on the fly.
+
+  Off by default, toggled from the toolbar, and offered only when a multi-cell grid
+  is on screen. `createScrollSync` in core owns the synchronizer's lifetime and
+  membership; `StackHandle.getViewportId()` and `STACK_ENGINE_ID` are now exported
+  so a viewport can be addressed in engine-level APIs.
+
+### Patch Changes
+
+- [`4f7f4e4`](https://github.com/docorbitapp/orbidicom/commit/4f7f4e4c7c071dee6e7c30c00a1e7393a4f875ad) Thanks [@gasci](https://github.com/gasci)! - Document the new viewer features in the package READMEs (linked viewports, the plain
+  circle annotation, the value-only probe label, MPR reachable from the toolbar), and
+  drop the em dash from every string the user actually reads. Each locale now uses its
+  own punctuation: a full stop, a danda for Hindi and Bengali, `。` for Chinese and
+  Japanese, and the Arabic comma where a comma is what the sentence needs.
+- Updated dependencies [[`9fa8b0c`](https://github.com/docorbitapp/orbidicom/commit/9fa8b0cebeaf96ed1115012992b31f89af12a801), [`4f7f4e4`](https://github.com/docorbitapp/orbidicom/commit/4f7f4e4c7c071dee6e7c30c00a1e7393a4f875ad), [`20cb66e`](https://github.com/docorbitapp/orbidicom/commit/20cb66e23678fd58a3259b9c76ef6d7e49508b89), [`420927b`](https://github.com/docorbitapp/orbidicom/commit/420927bf3f1f88ae3129983fd0e596e39fb00d45), [`cd87fd6`](https://github.com/docorbitapp/orbidicom/commit/cd87fd63688ebe6116265ce0db99e7d6deee44ad), [`7a8dc01`](https://github.com/docorbitapp/orbidicom/commit/7a8dc010115f99d8def92f73b4da56acb94a666f)]:
+  - @orbidicom/core@0.13.0
+
 ## 0.12.2
 
 ### Patch Changes

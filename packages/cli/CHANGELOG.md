@@ -1,5 +1,15 @@
 # orbidicom
 
+## 0.13.0
+
+### Patch Changes
+
+- [`4f7f4e4`](https://github.com/docorbitapp/orbidicom/commit/4f7f4e4c7c071dee6e7c30c00a1e7393a4f875ad) Thanks [@gasci](https://github.com/gasci)! - Document the new viewer features in the package READMEs (linked viewports, the plain
+  circle annotation, the value-only probe label, MPR reachable from the toolbar), and
+  drop the em dash from every string the user actually reads. Each locale now uses its
+  own punctuation: a full stop, a danda for Hindi and Bengali, `。` for Chinese and
+  Japanese, and the Arabic comma where a comma is what the sentence needs.
+
 ## 0.12.2
 
 ## 0.12.1
