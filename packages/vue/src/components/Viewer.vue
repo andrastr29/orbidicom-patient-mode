@@ -125,7 +125,7 @@
         </Transition>
 
         <!-- The grid stays mounted in MPR mode (display:none) so its viewports'
-             rendering engines keep their DOM elements — switching back is instant. -->
+             rendering engines keep their DOM elements, so switching back is instant. -->
         <div class="grid" :class="[gridClass, { 'grid--hidden': layoutMode === 'mpr' }]">
           <div
             v-for="i in MAX_CELLS"
@@ -408,7 +408,7 @@ const props = defineProps<{
   keymap?: Keymap;
   /**
    * Initial hanging protocol applied once the study's series load: a built-in
-   * name (`"single"` — default — or `"grid"`) or a custom function. Controls how
+   * name (`"single"`, the default, or `"grid"`) or a custom function. Controls how
    * many cells open and which series fills each.
    */
   hangingProtocol?: HangingProtocolName | HangingProtocol;
@@ -424,11 +424,11 @@ const emit = defineEmits<{ "update:studyUids": [string[]] }>();
 // Kicked off at setup, not in onMounted: the studyUids watcher is live from setup
 // and can reach loadIntoCell -> createStack before onMounted's await would have
 // resolved, building a viewport against an uninitialised Cornerstone. Everything
-// that touches a viewport awaits this first. Idempotent by construction — one
+// that touches a viewport awaits this first. Idempotent by construction: one
 // promise per component, started once.
 const csReady = initCornerstone();
 const series = ref<SeriesSummary[]>([]);
-// One shared preview provider for the rail (LRU-cached, lazy). Cheap to create —
+// One shared preview provider for the rail (LRU-cached, lazy). Cheap to create:
 // it allocates no DOM/viewport until a series actually needs a client render.
 const thumbnails = createThumbnailProvider({ source: props.source });
 const cellCount = ref(1);
@@ -453,13 +453,13 @@ let mpr: MprHandle | null = null;
 let enteringMpr = false;
 // Which cell's series the reconstruction was built from. The MPR is a separate
 // handle from that cell's stack and covers the whole stage, so blanking the cell
-// (its study closed) has to tear the volume down too — see blankCell.
+// (its study closed) has to tear the volume down too (see blankCell).
 let mprCell = -1;
 // Active 3D volume-rendering preset (only meaningful in MPR mode).
 const vrPreset = ref<string>(VR_PRESETS[0]);
 // Synchronized scrolling: scroll one grid cell, the coplanar ones follow to the
 // same anatomical level (position-based, so T1/T2 with different slice counts
-// stay aligned). Off by default and session-only — it is a reading mode, not a
+// stay aligned). Off by default and session-only: it is a reading mode, not a
 // preference. Meaningless in single view and in MPR (crosshairs already link the
 // planes there), so `canLinkViewports` gates the toolbar toggle.
 const syncScroll = ref(false);
@@ -467,7 +467,7 @@ let scrollSync: ScrollSyncHandle | null = null;
 
 // Reference lines: draw where the focused cell's slice cuts through the other
 // cells. Same gating and lifetime as synchronized scrolling, and just as
-// dismissible — the line is genuinely in the way on some studies.
+// dismissible, because the line is genuinely in the way on some studies.
 const referenceLines = ref(false);
 let refLines: ReferenceLinesHandle | null = null;
 
@@ -534,7 +534,7 @@ function blankCell(i: number) {
   tokens[i]++;
   // The MPR is a second handle rendering this cell's series over the whole stage,
   // and nothing else drops it (exitMpr is only reachable from setLayout/onMprError).
-  // Left alone it would keep displaying — and captureJpeg would keep exporting —
+  // Left alone it would keep displaying (and captureJpeg would keep exporting)
   // the closed study's reconstruction long after the rail forgot the study.
   if (layoutMode.value === "mpr" && mprCell === i) exitMpr();
   stopCine(i);
@@ -563,7 +563,7 @@ function blankCell(i: number) {
 /**
  * Re-point every cell at the same *series* after `series.value` is reordered or
  * filtered. seriesIdx holds positional indices, and newest-first ordering moves
- * series on add as well as on close — so both paths must translate
+ * series on add as well as on close, so both paths must translate
  * index -> UID -> new index. Cells whose series is gone are blanked.
  */
 function remapCells(prev: SeriesSummary[], next: SeriesSummary[]) {
@@ -592,7 +592,7 @@ let stopHistory: (() => void) | null = null;
 // display:none and excluded from the CSS grid's auto-flow.
 const isVisible = (i: number) =>
   cellCount.value === 1 ? i === activeCell.value : i < cellCount.value;
-// Flat indices of every series on screen (not just the active cell) — the rail
+// Flat indices of every series on screen (not just the active cell). The rail
 // keeps a group expanded when it holds one of these.
 const displayedSeriesIdx = computed(() => seriesIdx.filter((si, c) => si >= 0 && isVisible(c)));
 const gridClass = computed(
@@ -606,14 +606,14 @@ const canLinkViewports = computed(() => layoutMode.value === "grid" && cellCount
 
 /**
  * Re-declare which viewports scroll together. Called whenever the membership
- * could have changed — the toggle, the grid layout, a series loading into or
- * leaving a cell — and passes the full set each time; the handle diffs it.
+ * could have changed (the toggle, the grid layout, a series loading into or
+ * leaving a cell) and passes the full set each time; the handle diffs it.
  *
  * Report/SR/PDF cells and single-slice series are excluded: they have nothing to
  * scroll, and including them would just add dead members.
  */
 function refreshScrollSync() {
-  if (!scrollSync && !syncScroll.value) return; // never turned on — allocate nothing
+  if (!scrollSync && !syncScroll.value) return; // never turned on, so allocate nothing
   const ids: string[] = [];
   if (syncScroll.value && canLinkViewports.value) {
     for (let i = 0; i < MAX_CELLS; i++) {
@@ -626,13 +626,13 @@ function refreshScrollSync() {
 }
 
 /**
- * Re-point the reference lines at the focused cell — the one the user is
+ * Re-point the reference lines at the focused cell, the one the user is
  * scrolling. Cornerstone draws the line into every other cell whose plane is not
  * parallel to it and which shares its frame of reference, so an axial/coronal
  * pair lights up and an axial/axial pair (correctly) stays clean.
  */
 function refreshReferenceLines() {
-  if (!refLines && !referenceLines.value) return; // never turned on — allocate nothing
+  if (!refLines && !referenceLines.value) return; // never turned on, so allocate nothing
   const i = activeCell.value;
   const on = referenceLines.value && canLinkViewports.value && sliceCount[i] > 0;
   if (!refLines) refLines = createReferenceLines();
@@ -661,7 +661,7 @@ async function refreshMeta(i: number) {
     const m = await readImageMetadata(id);
     if (cellImageIds[i][sliceIndex[i]] === id) meta[i] = m;
   } catch {
-    /* metadata is best-effort — never block rendering on it */
+    /* metadata is best-effort; never block rendering on it */
   }
 }
 
@@ -685,7 +685,7 @@ async function onPickStudy(uid: string) {
   addStudyOpen.value = false;
   // Record it as picker-owned BEFORE the fetch: a prop write landing mid-flight
   // must not be able to treat it as a study the host dropped. Skipped when the
-  // prop already names it — then the host owns it and always has.
+  // prop already names it, then the host owns it and always has.
   if (!openStudyUids.value.includes(uid) && !(props.studyUids ?? []).includes(uid)) {
     pickedStudyUids.add(uid);
   }
@@ -743,7 +743,7 @@ const onActive = (fn: (s: StackHandle) => void) => {
 // Undo/redo mutate the (global) Cornerstone annotation state inside the history
 // controller, then we redraw every live cell's overlay and nudge the export gate
 // (programmatic add/remove doesn't emit the COMPLETED/REMOVED events the gate
-// listens to — same reason doClearAnnotations bumps it).
+// listens to, the same reason doClearAnnotations bumps it).
 function refreshAllAnnotations() {
   for (const s of stacks) s?.refreshAnnotations();
   annotationVersion.value++;
@@ -756,7 +756,7 @@ function onRedo() {
 }
 // A per-annotation × was clicked. Delete through core (recorded as an undoable
 // delete via ANNOTATION_REMOVED), then redraw every cell's overlay + nudge the
-// export/overlay gate — same path as undo/redo.
+// export/overlay gate, the same path as undo/redo.
 function onDeleteAnnotation(uid: string) {
   deleteAnnotation(uid);
   refreshAllAnnotations();
@@ -846,18 +846,18 @@ async function toggleSegmentation(seg: SegmentationInstance) {
     const data = await props.source.getSegmentation(s, seg);
     if (await stack.showSegmentation(data, segId)) shownSegs.add(seg.sopUid);
   } catch {
-    /* leave the toggle off — a real failure surfaces in the console/network tab */
+    /* leave the toggle off; a real failure surfaces in the console/network tab */
   }
 }
 
 // --- Multi-study session ----------------------------------------------------
 // Studies can be added and closed mid-session. `series.value` stays a single flat
 // list ordered newest-study-first (orderStudyGroups), so every mutation moves the
-// positional indices seriesIdx holds — remapCells re-points the cells by UID.
+// positional indices seriesIdx holds; remapCells re-points the cells by UID.
 const openStudyUids = ref<string[]>([]);
 
 /** Single writer for the open set, so hosts binding v-model:study-uids see add
- *  and close from the built-in affordances too — not only their own prop. */
+ *  and close from the built-in affordances too, not only their own prop. */
 function setOpenStudies(uids: string[]) {
   openStudyUids.value = uids;
   emit("update:studyUids", uids);
@@ -870,11 +870,11 @@ function setOpenStudies(uids: string[]) {
 const pendingStudyUids = new Set<string>();
 
 // Studies opened from the built-in picker, which `studyUids` never named. The
-// close pass reads "absent from the prop" as "the host dropped it" — true for a
+// close pass reads "absent from the prop" as "the host dropped it", true for a
 // study the prop once carried, but a picker-opened one was never there, so an
 // uncontrolled host (one that binds :study-uids and ignores update:studyUids, as
 // the demo does) would silently destroy it, with its measurements and no confirm,
-// on its very next prop write — the watcher fires on identity, not content.
+// on its very next prop write; the watcher fires on identity, not content.
 // Ownership transfers to the host the moment its prop does name the study.
 const pickedStudyUids = new Set<string>();
 
@@ -884,7 +884,7 @@ const pickedStudyUids = new Set<string>();
  *
  * Deliberately NOT applyInitialLayout() unless the session is empty: that resets
  * annotation history, clears key images and segmentation toggles and re-runs the
- * hanging protocol — right on mount, destructive mid-session. Adding to a live
+ * hanging protocol: right on mount, destructive mid-session. Adding to a live
  * session preserves annotations, key images, window/level, cellCount and
  * activeCell; only array positions move, which remapCells absorbs.
  */
@@ -896,12 +896,12 @@ async function addStudies(uids: string[], initial = false) {
   }
   // The bootstrap load hits the source even with no uids: `studyUids` is optional,
   // and a local-file or single-study backend ignores the argument and returns
-  // whatever it holds. Only while the session is genuinely unclaimed, though —
+  // whatever it holds. Only while the session is genuinely unclaimed, though:
   // the watcher can beat onMounted (a prop change, or just a parent re-render
   // passing a fresh array literal, during Cornerstone init), and then an empty
   // getSeries([]) means "every study you have" to DicomJson/Local. Those extra
   // studies would merge into the rail while `want` leaves openStudyUids empty,
-  // so the close pass — which only iterates openStudyUids — could never remove
+  // so the close pass (which only iterates openStudyUids) could never remove
   // them: another patient's series, stuck in the rail for the session.
   const unclaimed = !openStudyUids.value.length && !pendingStudyUids.size && !series.value.length;
   if (!want.length && !(initial && unclaimed)) return;
@@ -918,7 +918,7 @@ async function addStudies(uids: string[], initial = false) {
   // key images while every cell happens to be blank (its series was swapped out,
   // then its study closed). Re-hanging then would silently destroy that work.
   // Read after the fetch but before the merge, so it describes the session we are
-  // actually adding to — not the one that existed when the request went out.
+  // actually adding to, not the one that existed when the request went out.
   const wasEmpty = !series.value.length;
   // A source that ignores the uid argument can hand back series the session
   // already holds; merging a block twice would duplicate rail rows and leave
@@ -933,7 +933,7 @@ async function addStudies(uids: string[], initial = false) {
   }
   setOpenStudies([...openStudyUids.value, ...want]);
   // Nothing was on screen (mounted, or every study since closed), so there is no
-  // user work to preserve — hang the new set rather than leaving the stage blank
+  // user work to preserve, so hang the new set rather than leaving the stage blank
   // until the user clicks a rail row.
   if (wasEmpty && series.value.length) await applyInitialLayout();
   ensureSomethingShown();
@@ -944,7 +944,7 @@ async function addStudies(uids: string[], initial = false) {
  *
  * Non-destructive on purpose, which is what makes it safe where applyInitialLayout
  * is not: it resets no annotation history, clears no key images or segmentation
- * toggles, and leaves cellCount/activeCell alone — it only fills a cell that is
+ * toggles, and leaves cellCount/activeCell alone: it only fills a cell that is
  * already empty. Without it, replacing study A with study B (mount hangs A, the
  * merge sees a non-empty session so it doesn't hang B, then the close pass blanks
  * A's cell) leaves a black stage: at cellCount === 1 even the "pick a series" chip
@@ -958,7 +958,7 @@ function ensureSomethingShown() {
 
 /**
  * Bring the session in line with `props.studyUids`. The ONLY writer of the open
- * set from the prop — mount goes through it too, so an initial load and a
+ * set from the prop; mount goes through it too, so an initial load and a
  * mid-session change can never write `series.value` from two directions.
  */
 async function syncOpenStudies(initial = false) {
@@ -970,7 +970,7 @@ async function syncOpenStudies(initial = false) {
   // Re-read the prop after the await: a host that swaps studies while the first
   // fetch is still in flight must win over the load already on its way, or the
   // study it dismissed stays open (and on mount would replace what it asked for).
-  // A host that never passes `studyUids` isn't managing the set — close nothing.
+  // A host that never passes `studyUids` isn't managing the set, so close nothing.
   const latest = props.studyUids;
   if (!latest) return;
   for (const uid of [...openStudyUids.value]) {
@@ -993,7 +993,7 @@ watch(
 );
 
 /**
- * Every imageId the viewer has ever resolved for these series — read from the
+ * Every imageId the viewer has ever resolved for these series, read from the
  * session-scoped map, not from the cells. A series that was displayed, annotated
  * and then scrolled out of its cell still carries that work, and closing its study
  * must find it.
@@ -1008,7 +1008,7 @@ function loadedImageIdsFor(removed: SeriesSummary[]): Set<string> {
 
 /** Does anything the user made belong to these series? Key images carry their own
  *  seriesInstanceUID (captured at flag time), so they are matched on that as well
- *  as on imageId — the two agree, but the uid holds even if a reload changed ids. */
+ *  as on imageId; the two agree, but the uid holds even if a reload changed ids. */
 function hasUserWork(removed: SeriesSummary[]): boolean {
   const uids = new Set(removed.map((s) => s.seriesInstanceUID));
   const ids = loadedImageIdsFor(removed);
@@ -1022,7 +1022,7 @@ function hasUserWork(removed: SeriesSummary[]): boolean {
  * Discard the closed study's user work, so a measurement export can never
  * reference a study that is no longer open. History is reset rather than trimmed:
  * AnnotationHistory exposes only reset(), and a partial history that can redo a
- * measurement onto a closed study is worse than none — the same reasoning as
+ * measurement onto a closed study is worse than none, the same reasoning as
  * doClearAnnotations.
  */
 function purgeUserWork(removed: SeriesSummary[]) {
@@ -1035,7 +1035,7 @@ function purgeUserWork(removed: SeriesSummary[]) {
       touched = true;
     }
   }
-  // Snapshot before deleting — keyImages is reactive and this mutates it.
+  // Snapshot before deleting: keyImages is reactive and this mutates it.
   for (const k of [...keyImages.values()]) {
     if (ids.has(k.imageId) || uids.has(k.seriesInstanceUID)) {
       keyImages.delete(k.imageId);
@@ -1090,7 +1090,7 @@ const confirmCloseUid = ref<string | null>(null);
 /**
  * Which study the close confirm is about, in the same identity line the rail's
  * group header shows (date · description · patient). With two patients open at
- * once — the whole point of this feature — an unnamed destructive confirm is the
+ * once (the whole point of this feature), an unnamed destructive confirm is the
  * wrong affordance. Composed alongside the existing message rather than
  * interpolated into it, so no locale string changes shape.
  */
@@ -1102,7 +1102,7 @@ const confirmCloseLabel = computed(() => {
   return [formatDicomDate(st?.studyDate), st?.studyDescription, who].filter(Boolean).join(" · ");
 });
 
-/** Close is destructive, so it asks first — but only when there is something to
+/** Close is destructive, so it asks first, but only when there is something to
  *  lose. Dismissing a prior you merely glanced at stays frictionless. */
 function onCloseStudy(uid: string) {
   const removed = series.value.filter((s) => s.studyInstanceUID === uid);
@@ -1128,7 +1128,7 @@ const aiResultSet = ref<AIResultSet | null>(null);
 // User-visible import error (mirrors the srUploadMsg pattern). Set on a failed
 // import, cleared on the next successful one; bound to the panel's `error` prop.
 const aiImportMsg = ref<string | null>(null);
-// Handles (annotation UIDs + segmentation ids) the last apply added — removed
+// Handles (annotation UIDs + segmentation ids) the last apply added, removed
 // before every re-apply so accept/reject/toggle re-derive the on-screen state
 // from the (mutated) set, instead of leaking duplicate/stale representations.
 let aiApplied: { annotationUids: string[]; segmentationIds: string[] } = {
@@ -1137,9 +1137,9 @@ let aiApplied: { annotationUids: string[]; segmentationIds: string[] } = {
 };
 
 // Build the apply context from the SAME active-cell state the segmentation path
-// uses: the live viewport's id (getViewport().id — as AnnotationOverlay reads it)
+// uses: the live viewport's id (getViewport().id, as AnnotationOverlay reads it)
 // and the active cell's image ids, each paired with its SOP Instance UID (needed
-// to align imported SEG labelmaps to the right slices — see seg/align.ts).
+// to align imported SEG labelmaps to the right slices; see seg/align.ts).
 async function buildAiCtx(): Promise<{
   viewportId: string;
   stack: { imageId: string; sopInstanceUID: string }[];
@@ -1277,7 +1277,7 @@ async function loadIntoCell(i: number, si: number) {
   // The series-list count is a pre-fetch estimate (e.g. QIDO instance count),
   // which under-reports multi-frame series where one instance yields many frames
   // (PET/CT, NM, cine). Now that the frames are resolved, reconcile the rail count
-  // to what actually loaded. Image series only — leave report/PDF series (0 images).
+  // to what actually loaded. Image series only; leave report/PDF series (0 images).
   if (imageIds.length && s.numberOfFrames !== imageIds.length) {
     s.numberOfFrames = imageIds.length;
   }
@@ -1295,11 +1295,11 @@ async function loadIntoCell(i: number, si: number) {
       if (token !== tokens[i]) return;
       await ensureStack(i).setStack(imageIds);
       void refreshMeta(i);
-      // This cell now has a live viewport — it may need to join the sync set or
+      // This cell now has a live viewport, so it may need to join the sync set or
       // become the reference-line source.
       refreshLinkedViewports();
     } else {
-      // No images — a report series (encapsulated PDF or Structured Report) or
+      // No images: a report series (encapsulated PDF or Structured Report) or
       // other non-image series. Render the first report the source exposes.
       await maybeShowReport(i, s, token);
     }
@@ -1311,8 +1311,8 @@ async function loadIntoCell(i: number, si: number) {
 
 // Render the active series' first report document (PDF or SR), if the source
 // supports it. The report list is populated by the getImageIds() call that just
-// ran for this series. (Multiple reports / mixed image+report series — render-all
-// — is a later enhancement; this shows the first.)
+// ran for this series. (Multiple reports / mixed image+report series, i.e. render-all,
+// is a later enhancement; this shows the first.)
 async function maybeShowReport(i: number, s: SeriesSummary, token: number) {
   const src = props.source;
   // Prefer the generalized report surface; fall back to the legacy PDF-only one.
@@ -1332,7 +1332,7 @@ async function maybeShowReport(i: number, s: SeriesSummary, token: number) {
         bulkDataUri: report.bulkDataUri ?? null,
       });
       if (token === tokens[i]) pdfUrl[i] = url;
-      else URL.revokeObjectURL(url); // a newer load won — drop this one
+      else URL.revokeObjectURL(url); // a newer load won, so drop this one
     } else if (report.kind === "sr" && src.getStructuredReport) {
       const tree = await src.getStructuredReport(s, report);
       if (token === tokens[i]) srTree[i] = tree;
@@ -1470,11 +1470,11 @@ const selectTool = (name: string) => {
   activeTool.value = name;
 };
 // removeAllAnnotations() (inside the handle) is global, so refresh every live
-// cell's overlay — not just the active one — to wipe their SVG too.
+// cell's overlay, not just the active one, to wipe their SVG too.
 function doClearAnnotations() {
   confirmClearOpen.value = false;
   for (const s of stacks) s?.clearAnnotations();
-  // Clear-all is a deliberate bulk action, not an undoable step — drop the history.
+  // Clear-all is a deliberate bulk action, not an undoable step, so drop the history.
   annotationHistory.reset();
   // removeAllAnnotations() doesn't emit per-annotation events, so nudge the gate.
   annotationVersion.value++;
@@ -1501,7 +1501,7 @@ function triggerBlobDownload(blob: Blob, fileName: string) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  // Revoke on a later macrotask — revoking too eagerly (e.g. on the next frame)
+  // Revoke on a later macrotask; revoking too eagerly (e.g. on the next frame)
   // can cancel the download mid-flight in some browsers.
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
@@ -1526,7 +1526,7 @@ function onDownloadImage() {
     .catch((e) => console.warn("[viewer] slice image download failed", e));
 }
 
-// Export the drawn measurements (session-wide — Cornerstone annotation state is
+// Export the drawn measurements (session-wide, because Cornerstone annotation state is
 // global) as JSON or CSV. Filename derives from the active series.
 function onExportMeasurements(format: "json" | "csv") {
   const measurements = collectMeasurements();
@@ -1650,7 +1650,7 @@ async function applyInitialLayout() {
   const cells = Math.min(cellCount.value, assignments.length, MAX_CELLS);
   // Resolve the protocol's positional picks to series UIDs before loading any of
   // them. `assignments` is computed once but consumed across awaits, and a
-  // concurrent addStudies reorders series.value — remapCells repairs cells that
+  // concurrent addStudies reorders series.value; remapCells repairs cells that
   // are already loaded, but it cannot touch an index this loop hasn't reached, so
   // a positional replay would hang a different study's series than the protocol
   // chose.
@@ -1661,7 +1661,7 @@ async function applyInitialLayout() {
   }
   // Start every cell in the same tick instead of sequentially. loadIntoCell writes
   // seriesIdx synchronously, so this makes `displayedSeriesIdx` complete before
-  // Vue's first flush — the rail materializes each study group's collapse default
+  // Vue's first flush: the rail materializes each study group's collapse default
   // exactly once, at that flush, and a sequential loop left cells >= 1 still empty
   // then, permanently collapsing a study whose only on-screen series was headed
   // for a later cell.
