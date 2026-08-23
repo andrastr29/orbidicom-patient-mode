@@ -219,6 +219,31 @@
       </select>
     </label>
 
+    <!-- MPR / 3D as a first-class button, not just a layout-dropdown entry: it is
+         the feature people go looking for, and buried in a <select> nobody finds
+         it. Same target as the "MPR / 3D" option, and it toggles back out to
+         whichever grid was showing. -->
+    <button
+      v-tip="canMpr ? t('mprTitle') : t('mprFailed')"
+      class="tbtn tbtn--mpr"
+      :class="{ 'tbtn--active': mprActive }"
+      :disabled="!canMpr"
+      :aria-pressed="mprActive ?? false"
+      @click="toggleMpr"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 2.8 20.5 7.4v9.2L12 21.2 3.5 16.6V7.4z" />
+        <path d="M3.5 7.4 12 12l8.5-4.6M12 12v9.2" />
+      </svg>
+    </button>
+
     <!-- Multi-viewport reading aids. Hidden in single view, where they mean
          nothing — no second viewport to follow along. -->
     <template v-if="canLinkViewports">
@@ -602,6 +627,14 @@ const layoutOptions = computed<{ value: string; label: string; disabled: boolean
 // "mpr" and "2v" stay string sentinels; plain grid sizes parse to a number.
 function onLayoutChange(value: string) {
   emit("setLayout", value === "mpr" || value === "2v" ? value : Number(value));
+}
+
+// The MPR button toggles: into the reconstruction, or back out to the grid that
+// was showing. `layout` keeps its cell count while MPR is up, so leaving restores
+// it — including the stacked 2×1 variant, which needs its "2v" sentinel back.
+function toggleMpr() {
+  if (!props.mprActive) return emit("setLayout", "mpr");
+  emit("setLayout", props.layout === 2 && props.stacked ? "2v" : props.layout);
 }
 
 // The whole field is a <label>, but tapping its leading icon/label (or the

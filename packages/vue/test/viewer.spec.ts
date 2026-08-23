@@ -517,6 +517,26 @@ describe("Viewer", () => {
     expect(w.find(".tbtn--reflines").exists()).toBe(false);
   });
 
+  it("enters and leaves MPR from the dedicated toolbar button", async () => {
+    const w = mount(Viewer, { props: { source: volumeSource as never } });
+    await flushPromises();
+    await w.find(".tbtn--mpr").trigger("click");
+    await flushPromises();
+    expect(w.find(".mpr").exists()).toBe(true);
+    expect(w.find(".tbtn--mpr").classes()).toContain("tbtn--active");
+
+    await w.find(".tbtn--mpr").trigger("click");
+    await flushPromises();
+    expect(w.find(".mpr").exists()).toBe(false);
+    expect(w.find(".grid--hidden").exists()).toBe(false); // the grid is back
+  });
+
+  it("disables the MPR button for a series with too few slices to reconstruct", async () => {
+    const w = mount(Viewer, { props: { source: source as never } }); // 2 images
+    await flushPromises();
+    expect(w.find(".tbtn--mpr").attributes("disabled")).toBeDefined();
+  });
+
   it("collapses and re-expands the series rail via the rail toggle", async () => {
     const w = mount(Viewer, { props: { source: source as never } });
     await flushPromises();

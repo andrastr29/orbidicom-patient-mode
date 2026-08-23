@@ -175,6 +175,51 @@ describe("Toolbar", () => {
     expect(w.emitted("tool")?.[0]).toEqual(["CircleROI"]);
   });
 
+  it("surfaces MPR / 3D as its own button, disabled for a series that can't be reconstructed", async () => {
+    const flat = mount(Toolbar, {
+      props: { modality: "MR", activeTool: "WindowLevel", layout: 1, canMpr: false },
+    });
+    expect(flat.find(".tbtn--mpr").attributes("disabled")).toBeDefined();
+
+    const w = mount(Toolbar, {
+      props: { modality: "MR", activeTool: "WindowLevel", layout: 1, canMpr: true },
+    });
+    const btn = w.find(".tbtn--mpr");
+    expect(btn.attributes("disabled")).toBeUndefined();
+    await btn.trigger("click");
+    expect(w.emitted("setLayout")?.[0]).toEqual(["mpr"]);
+  });
+
+  it("toggles back out of MPR to the grid that was showing", async () => {
+    const w = mount(Toolbar, {
+      props: {
+        modality: "MR",
+        activeTool: "WindowLevel",
+        layout: 4,
+        canMpr: true,
+        mprActive: true,
+      },
+    });
+    expect(w.find(".tbtn--mpr").classes()).toContain("tbtn--active");
+    await w.find(".tbtn--mpr").trigger("click");
+    expect(w.emitted("setLayout")?.[0]).toEqual([4]);
+  });
+
+  it("restores the stacked 2×1 grid, not the side-by-side one, when leaving MPR", async () => {
+    const w = mount(Toolbar, {
+      props: {
+        modality: "MR",
+        activeTool: "WindowLevel",
+        layout: 2,
+        stacked: true,
+        canMpr: true,
+        mprActive: true,
+      },
+    });
+    await w.find(".tbtn--mpr").trigger("click");
+    expect(w.emitted("setLayout")?.[0]).toEqual(["2v"]);
+  });
+
   it("emits toggleMenu from the header hamburger", async () => {
     const w = mount(Toolbar, {
       props: { modality: "MR", activeTool: "WindowLevel", layout: 1, menuOpen: false },
