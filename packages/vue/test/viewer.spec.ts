@@ -19,8 +19,10 @@ const stack = {
   captureSliceJpeg: vi.fn().mockResolvedValue(new Blob(["x"], { type: "image/jpeg" })),
   destroy: vi.fn(),
   getViewport: vi.fn(() => null),
+  getViewportId: vi.fn(() => "stack-0"),
 };
 // Hoisted so the vi.mock factory (which Vitest lifts above imports) can read them.
+let stackSeq = 0;
 const {
   setPrimaryTool,
   collectMeasurements,
@@ -30,7 +32,14 @@ const {
   mprHandle,
   createMprView,
   annotationHistory,
+  scrollSync,
+  createScrollSync,
 } = vi.hoisted(() => {
+  const scrollSync = {
+    setViewports: vi.fn(),
+    getViewports: vi.fn(() => [] as string[]),
+    destroy: vi.fn(),
+  };
   const mprHandle = {
     setVolume: vi.fn().mockResolvedValue(undefined),
     setWindowLevel: vi.fn(),
@@ -46,7 +55,13 @@ const {
     // Hoisted so a test can hold Cornerstone init open and let the studyUids
     // watcher run before onMounted resumes.
     initCornerstone: vi.fn().mockResolvedValue(undefined),
-    createStack: vi.fn(() => stack),
+    // Each cell gets its own viewport id (the real handles do) so multi-cell
+    // features — scroll sync, reference lines — can tell the cells apart. The
+    // spied methods are shared, so `stack.setStack` assertions still work.
+    createStack: vi.fn(() => {
+      const viewportId = `stack-${stackSeq++}`;
+      return { ...stack, getViewportId: () => viewportId };
+    }),
     annotationHistory: {
       undo: vi.fn(() => false),
       redo: vi.fn(() => false),
@@ -56,6 +71,8 @@ const {
       subscribe: vi.fn(() => () => {}),
     },
     mprHandle,
+    scrollSync,
+    createScrollSync: vi.fn(() => scrollSync),
     // Fire onReady synchronously so the viewer's mprReady gate flips (the preset
     // picker is disabled until the volume is ready); the real handle fires it
     // after the volume builds.
@@ -125,6 +142,7 @@ vi.mock("@orbidicom/core", () => {
     getAnnotationDeleteTargets: vi.fn(() => []),
     subscribeOverlayReposition: vi.fn(() => () => {}),
     createMprView,
+    createScrollSync,
     createThumbnailProvider: vi.fn(() => ({
       get: vi.fn().mockResolvedValue(null),
       release: vi.fn(),
@@ -193,6 +211,7 @@ vi.mock("@orbidicom/core", () => {
       Angle: "Angle",
       Rectangle: "Rectangle",
       Ellipse: "Ellipse",
+      Circle: "CircleROI",
       Probe: "Probe",
     },
   };
@@ -387,6 +406,64 @@ describe("Viewer", () => {
     await w.find(".layout__select").setValue("4");
     await flushPromises();
     expect(w.find(".grid").classes()).not.toContain("grid--n2-stacked");
+  });
+
+  // Own fixture (not the shared twoSeriesSource): these tests mount several
+  // viewers, and a later test asserts an exact getImageIds call count on that one.
+  const syncSource = () => ({
+    capabilities: { downloadArchive: false, encapsulatedPdf: false, multiStudy: false },
+    getSeries: vi.fn(async () => [
+      { seriesInstanceUID: "T1", studyInstanceUID: "ST", modality: "MR", seriesDescription: "T1" },
+      { seriesInstanceUID: "T2", studyInstanceUID: "ST", modality: "MR", seriesDescription: "T2" },
+    ]),
+    getImageIds: vi.fn(async () => ["wadors:1", "wadors:2"]),
+  });
+  // Opens both cells side by side, the layout synchronized scrolling is for.
+  const twoUp = () => ({ cellCount: 2, assignments: [0, 1] });
+
+  it("offers synchronized scrolling only once a multi-cell grid is shown", async () => {
+    const w = mount(Viewer, { props: { source: syncSource() as never } });
+    await flushPromises();
+    expect(w.find(".tbtn--sync").exists()).toBe(false); // single view: nothing to follow
+    await w.find(".layout__select").setValue("2");
+    await flushPromises();
+    expect(w.find(".tbtn--sync").exists()).toBe(true);
+    expect(w.find(".tbtn--sync").classes()).not.toContain("tbtn--active"); // off by default
+  });
+
+  it("links every loaded cell's viewport when synchronized scrolling is switched on", async () => {
+    const w = mount(Viewer, {
+      props: { source: syncSource() as never, hangingProtocol: twoUp as never },
+    });
+    await flushPromises();
+    scrollSync.setViewports.mockClear();
+
+    await w.find(".tbtn--sync").trigger("click");
+    await flushPromises();
+    expect(w.find(".tbtn--sync").classes()).toContain("tbtn--active");
+    const ids = scrollSync.setViewports.mock.calls.at(-1)?.[0] as string[];
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2); // two distinct viewports, not the same cell twice
+  });
+
+  it("clears the synchronized set when the toggle goes off or the grid shrinks", async () => {
+    const w = mount(Viewer, {
+      props: { source: syncSource() as never, hangingProtocol: twoUp as never },
+    });
+    await flushPromises();
+    await w.find(".tbtn--sync").trigger("click");
+    await flushPromises();
+
+    await w.find(".tbtn--sync").trigger("click"); // off again
+    await flushPromises();
+    expect(scrollSync.setViewports.mock.calls.at(-1)?.[0]).toEqual([]);
+
+    // Back on, then shrink to single view: the sync set has to empty out too.
+    await w.find(".tbtn--sync").trigger("click");
+    await flushPromises();
+    await w.find(".layout__select").setValue("1");
+    await flushPromises();
+    expect(scrollSync.setViewports.mock.calls.at(-1)?.[0]).toEqual([]);
   });
 
   it("collapses and re-expands the series rail via the rail toggle", async () => {

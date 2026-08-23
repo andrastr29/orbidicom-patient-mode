@@ -18,6 +18,8 @@
       :can-mpr="canMpr"
       :mpr-active="layoutMode === 'mpr'"
       :stacked="gridStacked"
+      :can-sync-scroll="syncScrollAvailable"
+      :sync-scroll="syncScroll"
       :can-ai-results="aiResultsEnabled"
       @preset="applyPreset"
       @tool="selectTool"
@@ -32,6 +34,7 @@
       @export-key-images="onExportKeyImages"
       @upload-sr="confirmUploadSrOpen = true"
       @set-layout="setLayout"
+      @toggle-sync-scroll="syncScroll = !syncScroll"
       @cycle-overlay="cycleOverlay"
       @open-meta="openMeta"
       @toggle-menu="menuOpen = !menuOpen"
@@ -343,6 +346,7 @@ import {
   startAnnotationHistory,
   deleteAnnotation,
   createMprView,
+  createScrollSync,
   isVolumeCapable,
   VR_PRESETS,
   defaultVrPreset,
@@ -365,6 +369,7 @@ import type {
   SrTree,
   Keymap,
   MprHandle,
+  ScrollSyncHandle,
   HangingProtocol,
   HangingProtocolName,
   KeyImage,
@@ -448,6 +453,14 @@ let enteringMpr = false;
 let mprCell = -1;
 // Active 3D volume-rendering preset (only meaningful in MPR mode).
 const vrPreset = ref<string>(VR_PRESETS[0]);
+// Synchronized scrolling: scroll one grid cell, the coplanar ones follow to the
+// same anatomical level (position-based, so T1/T2 with different slice counts
+// stay aligned). Off by default and session-only — it is a reading mode, not a
+// preference. Meaningless in single view and in MPR (crosshairs already link the
+// planes there), so `syncScrollAvailable` gates the toolbar toggle.
+const syncScroll = ref(false);
+let scrollSync: ScrollSyncHandle | null = null;
+
 const activeTool = ref<string>(TOOLS.WindowLevel);
 const confirmClearOpen = ref(false);
 // Overlay toggle: show full info <-> blur patient data (for demos/screenshots).
@@ -523,6 +536,8 @@ function blankCell(i: number) {
   // the next load into this cell.
   stacks[i]?.destroy();
   stacks[i] = null;
+  // The viewport is gone from the engine; drop it from the sync set too.
+  refreshScrollSync();
   cellImageIds[i] = [];
   seriesIdx[i] = -1;
   sliceIndex[i] = 0;
@@ -573,6 +588,35 @@ const displayedSeriesIdx = computed(() => seriesIdx.filter((si, c) => si >= 0 &&
 const gridClass = computed(
   () => `grid--n${cellCount.value}${gridStacked.value ? " grid--n2-stacked" : ""}`,
 );
+
+// Multi-viewport reading aids only make sense with at least two image stacks
+// side by side in the grid; MPR drives its own panes through crosshairs.
+const syncScrollAvailable = computed(() => layoutMode.value === "grid" && cellCount.value > 1);
+
+/**
+ * Re-declare which viewports scroll together. Called whenever the membership
+ * could have changed — the toggle, the grid layout, a series loading into or
+ * leaving a cell — and passes the full set each time; the handle diffs it.
+ *
+ * Report/SR/PDF cells and single-slice series are excluded: they have nothing to
+ * scroll, and including them would just add dead members.
+ */
+function refreshScrollSync() {
+  if (!scrollSync && !syncScroll.value) return; // never turned on — allocate nothing
+  const ids: string[] = [];
+  if (syncScroll.value && syncScrollAvailable.value) {
+    for (let i = 0; i < MAX_CELLS; i++) {
+      const vpId = isVisible(i) && sliceCount[i] > 1 ? stacks[i]?.getViewportId() : undefined;
+      if (vpId) ids.push(vpId);
+    }
+  }
+  if (!scrollSync) scrollSync = createScrollSync();
+  scrollSync.setViewports(ids);
+}
+
+// Membership also changes when a cell gains or loses a stack; loadIntoCell and
+// blankCell call refreshScrollSync() directly for that.
+watch([syncScroll, syncScrollAvailable], refreshScrollSync);
 
 // Refresh the overlay metadata for a cell from its current slice's imageId.
 // Best-effort + race-guarded: a late resolve is dropped if the slice moved on.
@@ -1220,6 +1264,8 @@ async function loadIntoCell(i: number, si: number) {
       if (token !== tokens[i]) return;
       await ensureStack(i).setStack(imageIds);
       void refreshMeta(i);
+      // This cell now has a scrollable stack — it may need to join the sync set.
+      refreshScrollSync();
     } else {
       // No images — a report series (encapsulated PDF or Structured Report) or
       // other non-image series. Render the first report the source exposes.
@@ -1604,6 +1650,8 @@ onUnmounted(() => {
   annotationHistory.reset();
   mpr?.destroy();
   mpr = null;
+  scrollSync?.destroy();
+  scrollSync = null;
   thumbnails.destroy();
   for (let i = 0; i < MAX_CELLS; i++) {
     tokens[i]++;

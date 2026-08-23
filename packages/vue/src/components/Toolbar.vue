@@ -219,6 +219,31 @@
       </select>
     </label>
 
+    <!-- Multi-viewport reading aids. Hidden in single view, where they mean
+         nothing — no second viewport to follow along. -->
+    <template v-if="canSyncScroll">
+      <button
+        v-tip="t('syncScroll')"
+        class="tbtn tbtn--sync"
+        :class="{ 'tbtn--active': syncScroll }"
+        :aria-pressed="syncScroll ?? false"
+        @click="$emit('toggleSyncScroll')"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="2.5" y="4.5" width="8" height="15" rx="1.5" />
+          <rect x="13.5" y="4.5" width="8" height="15" rx="1.5" />
+          <path d="M2.5 12h8M13.5 12h8M10.5 12h3" />
+        </svg>
+      </button>
+    </template>
+
     <!-- Toggle the on-image overlay: show full info <-> blur patient data. -->
     <button
       v-tip="overlayTitle"
@@ -491,6 +516,10 @@ const props = defineProps<{
   mprActive?: boolean;
   /** Whether the 2-cell grid is stacked (2×1) rather than side-by-side (1×2). */
   stacked?: boolean;
+  /** Whether synchronized scrolling is offered (a multi-cell grid is shown). */
+  canSyncScroll?: boolean;
+  /** Whether synchronized scrolling is currently on. */
+  syncScroll?: boolean;
   /** Whether the AI & Results panel is available (features.aiResults). */
   canAiResults?: boolean;
 }>();
@@ -508,6 +537,7 @@ const emit = defineEmits<{
   exportKeyImages: [];
   uploadSr: [];
   setLayout: [number | "mpr" | "2v"];
+  toggleSyncScroll: [];
   cycleOverlay: [];
   openMeta: [];
   toggleMenu: [];

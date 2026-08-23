@@ -27,7 +27,13 @@ let seq = 0;
 // reuses the same dead engine. One shared engine keeps every cell's viewport in a
 // single bounded 7-context pool (the pool spreads viewports across its contexts),
 // exactly how createMprView already drives its four panes from one engine.
-const SHARED_ENGINE_ID = "orbidicom-stack-engine";
+/**
+ * Id of that one shared engine. Exported because anything that has to name a
+ * stack viewport to Cornerstone — scroll synchronizers, reference lines — needs
+ * the `{ renderingEngineId, viewportId }` pair, and this is the engine half.
+ */
+export const STACK_ENGINE_ID = "orbidicom-stack-engine";
+const SHARED_ENGINE_ID = STACK_ENGINE_ID;
 let sharedEngine: RenderingEngine | null = null;
 // Live viewports on the shared engine, so it is torn down only once the last cell
 // (or the thumbnailer) is gone — and lazily rebuilt on the next createStack.
@@ -101,6 +107,12 @@ export interface StackHandle {
    * overlay only updates when a render is triggered for this element.
    */
   refreshAnnotations: () => void;
+  /**
+   * This cell's Cornerstone viewport id, paired with {@link STACK_ENGINE_ID} to
+   * address the viewport in engine-level APIs (scroll sync, reference lines).
+   * Stable for the handle's lifetime.
+   */
+  getViewportId: () => string;
   /**
    * The live Cornerstone stack viewport for this cell. Used by the UI overlay to
    * project annotation world coordinates to canvas pixels (worldToCanvas) and to
@@ -308,6 +320,9 @@ export function createStack(element: HTMLDivElement, cb: StackCallbacks = {}): S
     refreshAnnotations() {
       if (destroyed) return;
       refreshAnnotationOverlay();
+    },
+    getViewportId() {
+      return viewportId;
     },
     getViewport() {
       return vp as Types.IStackViewport;

@@ -14,6 +14,7 @@ export * from "./thumbnails";
 export * from "./cornerstone/tool-names";
 export * from "./cornerstone/init";
 export * from "./cornerstone/stack";
+export * from "./cornerstone/scroll-sync";
 export * from "./cornerstone/thumbnail";
 export * from "./cornerstone/mpr";
 export * from "./cornerstone/measurements";
