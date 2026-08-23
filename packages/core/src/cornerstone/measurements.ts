@@ -1,11 +1,11 @@
 /**
- * Measurement export — read the annotations the user has drawn (Length, Angle,
+ * Measurement export: read the annotations the user has drawn (Length, Angle,
  * ROIs, Probe) and serialize them to JSON or CSV. Framework-agnostic: only
  * `collectMeasurements` / `onMeasurementsChanged` touch Cornerstone; the
  * formatters are pure and testable with a plain array.
  *
  * DICOM-SR (TID-1500) generation lives in `sr/to-json.ts` (`buildMeasurementSr`),
- * which consumes the `Measurement` shape below directly — it's intentionally
+ * which consumes the `Measurement` shape below directly. It's intentionally
  * SR-friendly (frame of reference, image id, world points, coded stats). Encoding
  * the generated DICOM-JSON SR to Part-10 (e.g. dcmjs) for STOW-RS upload is the
  * remaining host-side step.
@@ -38,7 +38,7 @@ export interface Measurement {
   points: [number, number, number][];
 }
 
-// Measurement export covers only tools that yield a value — plain shape
+// Measurement export covers only tools that yield a value; plain shape
 // annotations (SHAPE_TOOLS) are deliberately excluded, they measure nothing.
 const KNOWN_TOOLS = new Set<string>(MEASUREMENT_TOOLS);
 

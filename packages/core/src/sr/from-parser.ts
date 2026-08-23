@@ -1,5 +1,5 @@
 // Adapter: a dicom-parser DataSet (local files) → normalized SrTree. Mirrors
-// from-json.ts but walks dicom-parser's shape — scalars via `string(tag)`, nested
+// from-json.ts but walks dicom-parser's shape: scalars via `string(tag)`, nested
 // sequences via `elements[tag].items[].dataSet`. Tag keys are lowercase hex with an
 // "x" prefix and no comma (e.g. ContentSequence 0040,A730 → "x0040a730").
 

@@ -2,7 +2,7 @@ import type { DataSource, SeriesSummary, DataSourceCapabilities } from "../datas
 
 // Register the nifti image loader once. The package doesn't auto-register it, and
 // core's genericMetadataProvider (which createNiftiImageIdsAndCacheMetadata populates)
-// auto-registers itself on import — so we only need the image loader here.
+// auto-registers itself on import, so we only need the image loader here.
 let registered = false;
 async function ensureNiftiLoader(): Promise<void> {
   if (registered) return;
@@ -31,7 +31,7 @@ export interface NiftiOptions {
 
 /**
  * A {@link DataSource} for a single local NIfTI volume (`.nii` / `.nii.gz`).
- * The volume is exposed as one series of axial slices — `nifti:<url>?frame=N`
+ * The volume is exposed as one series of axial slices: `nifti:<url>?frame=N`
  * imageIds that the registered nifti image loader renders in a normal stack
  * viewport, so the existing viewer works unchanged.
  */

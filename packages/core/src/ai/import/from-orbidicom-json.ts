@@ -34,7 +34,7 @@ export function fromOrbidicomJson(input: unknown): AIResultSet {
   if (!Array.isArray(doc.measurements)) {
     throw new ImportError("orbidicom.measurements/v1: missing measurements array");
   }
-  // Validate the whole set first — all-or-nothing, so a malformed item never
+  // Validate the whole set first: all-or-nothing, so a malformed item never
   // imports "successfully" and then crashes downstream.
   doc.measurements.forEach((m, i) => assertMeasurement(m, i));
   const results: MeasurementResult[] = (doc.measurements as Measurement[]).map((m, i) => ({

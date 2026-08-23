@@ -18,7 +18,7 @@ COPY apps/demo/package.json ./apps/demo/
 RUN pnpm install --frozen-lockfile
 
 # Build core (emits dist consumed by the demo) then bundle the SPA. We skip the
-# vue/cli package builds here — Vite compiles @orbidicom/vue from source and the
+# vue/cli package builds here: Vite compiles @orbidicom/vue from source and the
 # CLI isn't part of the static deployment.
 COPY . .
 RUN pnpm --filter @orbidicom/core build \

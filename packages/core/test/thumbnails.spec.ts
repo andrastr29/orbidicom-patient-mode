@@ -6,7 +6,7 @@ import { createThumbnailProvider } from "../src/thumbnails";
 // The provider statically imports createThumbnailer, which transitively loads the
 // real @cornerstonejs image-loader (registers a Worker at import) and crashes in
 // the node test env. Every test here injects a fake thumbnailer, so the real one
-// is never needed — stub it out, mirroring thumbnail.spec.ts / stack.spec.ts.
+// is never needed, so stub it out, mirroring thumbnail.spec.ts / stack.spec.ts.
 vi.mock("../src/cornerstone/thumbnail", () => ({ createThumbnailer: vi.fn() }));
 
 let urlSeq = 0;
@@ -113,7 +113,7 @@ describe("createThumbnailProvider", () => {
     const source = fakeSource(["a", "b", "c"]);
     const thumbnailer = fakeThumbnailer();
     const p = createThumbnailProvider({ source, thumbnailer });
-    // Count omitted (PACS didn't return it) — must NOT be treated as a report.
+    // Count omitted (PACS didn't return it); must NOT be treated as a report.
     const ct: SeriesSummary = { seriesInstanceUID: "CT1", modality: "CT" };
     expect(await p.get(ct)).toBe("blob:mock/0");
     expect(thumbnailer.render).toHaveBeenCalledTimes(1);
@@ -140,7 +140,7 @@ describe("createThumbnailProvider", () => {
     const source = fakeSource(["a"]);
     const p = createThumbnailProvider({ source, thumbnailer: fakeThumbnailer(), cacheSize: 1 });
     await p.get(S("X")); // blob:mock/0
-    await p.get(S("Y")); // blob:mock/1 — evicts X
+    await p.get(S("Y")); // blob:mock/1, which evicts X
     expect(
       (URL as unknown as { revokeObjectURL: ReturnType<typeof vi.fn> }).revokeObjectURL,
     ).toHaveBeenCalledWith("blob:mock/0");
@@ -193,7 +193,7 @@ describe("createThumbnailProvider", () => {
         capabilities: {},
       };
       // render is a spy so we can prove B's cache entry survives release() by call
-      // count, not by comparing a URL string — deterministic rendering means A and B
+      // count, not by comparing a URL string: deterministic rendering means A and B
       // would produce the same URL string whether or not B was wrongly re-rendered.
       const render = vi.fn(async (id: string) => ({ tag: id }) as unknown as Blob);
       const thumbnailer = { render, destroy: () => {} };

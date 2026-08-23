@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // prefetch.spec.ts drives the prefetcher against a fake pool, which is where the
 // queueing logic is pinned. This file does the opposite: it wires the prefetcher
 // to the REAL Cornerstone RequestPoolManager, so the assumptions the design rests
-// on are checked against the actual implementation rather than my model of it —
+// on are checked against the actual implementation rather than my model of it.
 // that addRequest drains synchronously, that a request still sitting in the pool
 // has not started, and above all that filterRequests spares everyone else's work.
 const h = vi.hoisted(() => ({
@@ -15,8 +15,8 @@ vi.mock("@cornerstonejs/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@cornerstonejs/core")>();
   return {
     ...actual,
-    // The only fake: never actually fetch a frame. Everything else — the pool,
-    // its queue, its concurrency accounting, filterRequests — is the real thing.
+    // The only fake: never actually fetch a frame. Everything else (the pool,
+    // its queue, its concurrency accounting, filterRequests) is the real thing.
     imageLoader: {
       loadAndCacheImage: (imageId: string) =>
         new Promise<void>((resolve) => {
@@ -96,7 +96,7 @@ describe("createPrefetcher against the real request pool", () => {
     await settleAll(); // free the in-flight slots
 
     // THE BUG THIS FIXES: with cornerstone's stackPrefetch these would still be
-    // img:4, img:5, img:6 — the queue kept grinding outward from the opening
+    // img:4, img:5, img:6: the queue kept grinding outward from the opening
     // slice while the user sat on 300.
     expect(h.starts.slice(IN_FLIGHT, IN_FLIGHT + 4)).toEqual([
       "img:300",

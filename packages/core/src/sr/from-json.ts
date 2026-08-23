@@ -1,6 +1,6 @@
 // Adapter: WADO-RS DICOM-JSON instance metadata → normalized SrTree.
 // The SR Content Sequence (0040,A730) is already inline in the metadata that
-// DicomWebDataSource fetches, so this is parse-only — no extra network round-trip.
+// DicomWebDataSource fetches, so this is parse-only, with no extra network round-trip.
 
 import { SR_VALUE_TYPES, type SrTree, type SrNode, type SrValueType, type SrCode } from "./types";
 

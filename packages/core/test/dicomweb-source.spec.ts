@@ -214,9 +214,9 @@ describe("DicomWebDataSource encapsulated PDFs", () => {
     return out.buffer;
   }
 
-  it("lists a DOC (encapsulated-PDF report) series — report modalities are NOT filtered", async () => {
+  it("lists a DOC (encapsulated-PDF report) series, because report modalities are NOT filtered", async () => {
     // Regression guard: a standalone DOC report series (Modality DOC, its own
-    // Series UID — the common encapsulated-PDF shape) must appear in the rail.
+    // Series UID, the common encapsulated-PDF shape) must appear in the rail.
     // DOC/OT are deliberately absent from NON_RENDERABLE_MODALITIES. If a DOC
     // series is missing from the viewer, the QIDO /series response lacked it, not
     // this code.
@@ -422,7 +422,7 @@ describe("DicomWebDataSource DICOM-SEG", () => {
   it("routes a SEG instance out of imageIds and lists it as a segmentation", async () => {
     const ds = new DicomWebDataSource({ root: "/pacs/dicom-web", client: segClient as never });
     const series = { seriesInstanceUID: "SEG1", studyInstanceUID: "study-1" };
-    // A SEG carries Rows/PixelData but is not a renderable stack — it must not
+    // A SEG carries Rows/PixelData but is not a renderable stack, so it must not
     // leak into the image ids (which would stack the labelmap as grayscale).
     expect(await ds.getImageIds(series)).toEqual([]);
     expect(ds.listSegmentations!(series)).toEqual([

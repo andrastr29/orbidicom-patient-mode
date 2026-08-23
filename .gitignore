@@ -11,7 +11,7 @@ coverage/
 # CLI ships the demo build, copied here at build time (scripts/bundle-demo.mjs)
 packages/cli/public/
 
-# Internal planning/spec docs — not part of the OSS distribution
+# Internal planning/spec docs, not part of the OSS distribution
 docs/superpowers/
 
 # Brainstorming visual-companion scratch dir

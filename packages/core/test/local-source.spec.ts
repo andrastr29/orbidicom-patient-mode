@@ -39,7 +39,7 @@ const tagsByName: Record<string, LocalTags> = {
     sopInstanceUID: "sr1",
     instanceNumber: 1,
   },
-  // Parses as DICOM but has no PixelData and blank modality (e.g. DICOMDIR) —
+  // Parses as DICOM but has no PixelData and blank modality (e.g. DICOMDIR),
   // must be skipped rather than forming a phantom "Series" that hangs on select.
   DICOMDIR: {
     seriesInstanceUID: "local-series",
@@ -84,7 +84,7 @@ describe("LocalDataSource", () => {
   });
 
   it("expands multi-frame instances into per-frame imageIds and counts frames, not files", async () => {
-    // A single multi-frame PET object (one file, three frames) — the DICOMweb path
+    // A single multi-frame PET object (one file, three frames); the DICOMweb path
     // already expands these; the local path must too, or frames 2..N are lost.
     const multi: Record<string, LocalTags> = {
       "pet.dcm": {
@@ -128,7 +128,7 @@ describe("LocalDataSource", () => {
   it("drops instances with no PixelData (DICOMDIR / blank-modality non-images)", async () => {
     const ds = new LocalDataSource({ parseFile, addFile: () => "dicomfile:x" });
     const added = await ds.addFiles([file("a.dcm"), file("DICOMDIR")]);
-    expect(added).toBe(1); // DICOMDIR (hasPixelData:false) skipped — no phantom series
+    expect(added).toBe(1); // DICOMDIR (hasPixelData:false) skipped, so no phantom series
     const series = await ds.getSeries([]);
     expect(series.map((s) => s.seriesInstanceUID)).toEqual(["S1"]);
   });
@@ -165,7 +165,7 @@ describe("LocalDataSource", () => {
     const ds = new LocalDataSource({ parseFile, addFile: () => "dicomfile:x" });
     expect(await ds.getImageIds({ seriesInstanceUID: "nope" })).toEqual([]);
     // multiStudy: a dropped folder can hold several studies. studySearch stays
-    // absent — there is no worklist to query, so no add-study button appears.
+    // absent, so there is no worklist to query, so no add-study button appears.
     expect(ds.capabilities).toMatchObject({ downloadArchive: false, multiStudy: true });
     expect(ds.capabilities.studySearch).toBeFalsy();
   });

@@ -48,8 +48,8 @@ async function render(url: string) {
 }
 
 // Render on mount (the template ref is bound by now) and on later src changes.
-// An { immediate: true } watch would fire during setup() — before `container`
-// is bound — so render() would bail on a null element and never run again.
+// An { immediate: true } watch would fire during setup(), before `container`
+// is bound, so render() would bail on a null element and never run again.
 onMounted(() => props.src && render(props.src));
 watch(
   () => props.src,

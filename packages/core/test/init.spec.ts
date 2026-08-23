@@ -86,7 +86,7 @@ describe("initCornerstone", () => {
     expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Circle, { calculateStats: false });
     // Zoom keeps its single-finger drag override.
     expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Zoom, { pinchToZoom: false });
-    // Every other tool joins with library defaults — the measuring ROIs keep theirs.
+    // Every other tool joins with library defaults; the measuring ROIs keep theirs.
     expect(h.tg.addTool).toHaveBeenCalledWith(fresh.TOOLS.Ellipse, undefined);
   });
 

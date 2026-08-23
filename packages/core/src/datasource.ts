@@ -42,7 +42,7 @@ export interface SegmentationData {
 
 export interface DataSourceCapabilities {
   downloadArchive?: boolean;
-  /** @deprecated mirror of `reports.pdf` — kept for back-compat. */
+  /** @deprecated mirror of `reports.pdf`, kept for back-compat. */
   encapsulatedPdf?: boolean;
   /** Which report documents this source can surface/render. */
   reports?: { pdf?: boolean; sr?: boolean };
@@ -157,7 +157,7 @@ export interface DataSource {
   listSegmentations?(series: SeriesSummary): SegmentationInstance[];
   /** Fetch and decode a SEG instance into segment definitions + per-image labelmaps. */
   getSegmentation?(series: SeriesSummary, seg: SegmentationInstance): Promise<SegmentationData>;
-  /** @deprecated use {@link listReports} — kept so existing callers compile. */
+  /** @deprecated use {@link listReports}; kept so existing callers compile. */
   listPdfs?(series: SeriesSummary): PdfInstance[];
   /** Fetch an encapsulated PDF's bytes and return an object URL (application/pdf). */
   getPdfObjectUrl?(series: SeriesSummary, pdf: PdfInstance): Promise<string>;

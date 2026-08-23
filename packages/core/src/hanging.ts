@@ -1,5 +1,5 @@
 /**
- * Lightweight hanging protocols — pure functions that map a study's series onto
+ * Lightweight hanging protocols: pure functions that map a study's series onto
  * the viewer's grid. A protocol takes the series list and a cell budget and
  * returns how many cells to show plus which series index each cell displays.
  * Framework-agnostic: the Vue layer applies the result to its grid, this module

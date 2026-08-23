@@ -79,7 +79,7 @@ const studies = ref<StudySummary[]>([]);
 const loading = ref(false);
 const searched = ref(false);
 
-// The UI never branches on backend type — it just honors the advertised capability.
+// The UI never branches on backend type; it just honors the advertised capability.
 const canSearch = computed(
   () =>
     !!props.source.capabilities?.studySearch && typeof props.source.searchStudies === "function",

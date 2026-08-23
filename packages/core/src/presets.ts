@@ -21,7 +21,7 @@ export function seedDefaultPresets(): void {
  * Window presets registered for a modality, in registration order.
  *
  * Fixed W/L windows are only standardized for CT (Hounsfield units), so CT ships
- * with the five built-ins above and other modalities (MR, US, …) start empty —
+ * with the five built-ins above and other modalities (MR, US, …) start empty:
  * their intensities are image-specific, so a fixed window is meaningless and the
  * toolbar hides the control (the W/L drag tool and Reset still apply).
  *

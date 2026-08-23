@@ -15,7 +15,7 @@ docker compose -f examples/docker-compose.yaml up --build
 The viewer reaches Orthanc through its own `/dicom-web` (nginx reverse proxy →
 `orthanc:8042/dicom-web`), so there's no CORS to configure. Upload a study to
 Orthanc, copy its **Study Instance UID**, and paste it into the viewer's
-"load from PACS" box — or drag local `.dcm`/`.zip`/`.nii` files in as usual.
+"load from PACS" box, or drag local `.dcm`/`.zip`/`.nii` files in as usual.
 
 > **Dev only.** Orthanc authentication is disabled and the image is unpinned for
 > convenience. Pin a version and enable auth before relying on this.

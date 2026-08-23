@@ -20,7 +20,7 @@
     <!-- Bottom-left: position within the series. -->
     <div class="ovl ovl--bl">
       <span class="ovl__img">{{ t("img") }} {{ index + 1 }} / {{ count }}</span>
-      <!-- Only show the DICOM InstanceNumber when it adds info — i.e. it differs
+      <!-- Only show the DICOM InstanceNumber when it adds info, i.e. it differs
            from the 1-based image position already shown above. -->
       <span v-if="m && m.instanceNumber != null && m.instanceNumber !== index + 1" class="ovl__inst"
         >#{{ m.instanceNumber }}</span

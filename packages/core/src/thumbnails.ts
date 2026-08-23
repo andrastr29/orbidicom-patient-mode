@@ -12,7 +12,7 @@ export interface ThumbnailProvider {
 
 export interface ThumbnailProviderOptions {
   source: DataSource;
-  /** Inject a renderer (tests) — defaults to a real offscreen Thumbnailer. */
+  /** Inject a renderer (tests); defaults to a real offscreen Thumbnailer. */
   thumbnailer?: Thumbnailer;
   /** Max cached entries before LRU eviction. Default 200. */
   cacheSize?: number;
@@ -88,7 +88,7 @@ export function createThumbnailProvider(opts: ThumbnailProviderOptions): Thumbna
   function resolve(series: SeriesSummary): Promise<string | null> {
     const key = series.seriesInstanceUID;
     const n = series.numberOfFrames;
-    // Never renderable — cache a null preview and never touch the network:
+    // Never renderable, so cache a null preview and never touch the network:
     //  - a non-image modality (SR/DOC/KO/PR/AU) is a report, OR
     //  - an explicit zero-or-fewer instance count.
     // An absent count (undefined) is "unknown", NOT a report, so image series on a

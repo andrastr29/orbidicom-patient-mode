@@ -1,6 +1,6 @@
 /**
  * Shared viewport-capture helpers used by both the stack viewer and MPR. Internal
- * to the package (not re-exported from the barrel) — pure DOM, no Cornerstone.
+ * to the package (not re-exported from the barrel): pure DOM, no Cornerstone.
  */
 
 export interface WindowLevel {
@@ -55,7 +55,7 @@ export async function compositeSliceJpeg(
   const ctx = out.getContext("2d", { alpha: false });
   if (!ctx) return null;
 
-  // JPEG has no alpha — fill the viewport's black background first.
+  // JPEG has no alpha, so fill the viewport's black background first.
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, w, h);
   // Layer 1: the rendered medical image (same-origin 2D canvas, safe to read).
@@ -79,7 +79,7 @@ export async function compositeSliceJpeg(
       const img = await loadImage(url);
       ctx.drawImage(img, 0, 0, w, h);
     } catch {
-      /* overlay failed to rasterize — still export the image layer */
+      /* overlay failed to rasterize; still export the image layer */
     }
   }
 

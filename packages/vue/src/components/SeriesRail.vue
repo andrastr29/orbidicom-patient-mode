@@ -122,8 +122,8 @@ type Group = {
   line2: string;
 };
 
-// Group only when the rail actually holds more than one study. A single study —
-// or a local-file session where every studyInstanceUID is undefined — renders
+// Group only when the rail actually holds more than one study. A single study
+// (or a local-file session where every studyInstanceUID is undefined) renders
 // exactly as it always has: no headers, no collapse, no behavior change.
 const grouped = computed(() => new Set(props.series.map((s) => s.studyInstanceUID ?? "")).size > 1);
 
@@ -156,7 +156,7 @@ const groups = computed<Group[]>(() => {
 
 // Collapse state per study UID, owned by the rail and session-scoped. An entry is
 // materialized once, the first time that study's group appears in `groups`, by the
-// watcher below — and then never re-defaulted, so neither `displayed`/`active`
+// watcher below, and then never re-defaulted, so neither `displayed`/`active`
 // moving on nor appending another study can reopen or reclose a group the user
 // deliberately toggled. A study that closes and comes back has its UID pruned from
 // `expanded`, so it starts fresh (default-computed again) rather than restoring
@@ -169,7 +169,7 @@ const displayedSet = computed(() => new Set(props.displayed ?? [props.active]));
 // studies that are no longer present. Must run as a watcher, not inside a computed
 // or render-time function: writing reactive state during render is a side effect
 // Vue explicitly warns against, and a computed re-deriving the default on every
-// access (rather than writing it once) is exactly the bug this replaces — it would
+// access (rather than writing it once) is exactly the bug this replaces: it would
 // silently flip a group's visibility whenever `displayed`/`active` moved on.
 watch(
   groups,
@@ -181,7 +181,7 @@ watch(
     gs.forEach((g, gi) => {
       if (expanded[g.uid] === undefined) {
         // Expand it when it is the newest study (first group), or when any of its
-        // series is on screen — a group that holds the row the user is looking at
+        // series is on screen: a group that holds the row the user is looking at
         // must never start hidden.
         expanded[g.uid] = gi === 0 || g.rows.some((r) => displayedSet.value.has(r.flat));
       }
@@ -204,7 +204,7 @@ function toggle(g: Group, gi: number) {
 }
 
 // The image count is only meaningful for image series. Report/document series
-// (e.g. an encapsulated PDF, modality DOC, 0 frames) show just the modality —
+// (e.g. an encapsulated PDF, modality DOC, 0 frames) show just the modality,
 // "DOC · 0 img" reads like an error, so the count is dropped when there are none.
 const meta = (s: SeriesSummary) => {
   const mod = s.modality ?? "";
@@ -232,7 +232,7 @@ function load(uid: string) {
   const s = seriesByUid.get(uid);
   if (!s) return;
   // Mirror the provider's rule: a non-image modality (SR/DOC/KO/PR/AU) or an
-  // explicit zero-or-fewer instance count is a report — show the document glyph
+  // explicit zero-or-fewer instance count is a report, so show the document glyph
   // and never ask for a preview. An absent count (undefined) is "unknown", not a
   // report, so image series on a PACS that omits the count still get a thumbnail.
   const n = s.numberOfFrames;
@@ -260,13 +260,13 @@ function load(uid: string) {
 function bindThumb(el: Element | null, s: SeriesSummary) {
   const uid = s.seriesInstanceUID;
   if (!el) {
-    // Vue calls the ref with null when the row unmounts — which happens every
+    // Vue calls the ref with null when the row unmounts, which happens every
     // time its study group collapses, not just on removal from props.series. A
     // row that was bound and observed but never intersected (states[uid] still
     // undefined) has no fetch in flight, so its `observed` entry must be cleared
     // here: otherwise `observed.has(uid)` stays true forever, and on re-expand
     // the guard below short-circuits before the new element is ever registered
-    // with the observer — the thumbnail spins forever with no way to recover.
+    // with the observer: the thumbnail spins forever with no way to recover.
     // A row already mid-fetch (`kind: "loading"`) or resolved needs no action:
     // its promise (or its finished result) doesn't depend on the element, and
     // re-observing it would risk a duplicate `load()` call once it remounts.
@@ -304,7 +304,7 @@ function createObserver(): IntersectionObserver | null {
 // row's function ref synchronously during the first DOM patch, which happens
 // *before* `onMounted`. If `io` were still null then, every `bindThumb` would
 // take the eager `else load(uid)` path and mark the row `observed`, so it would
-// never be observed once `io` existed — the lazy path would be dead code.
+// never be observed once `io` existed: the lazy path would be dead code.
 onBeforeMount(() => {
   io = createObserver();
 });
@@ -314,7 +314,7 @@ onBeforeMount(() => {
 // only for series that actually disappeared, and keep everything else so an
 // append or reorder never refetches a thumbnail the user already has.
 //
-// The observer is still rebuilt whenever rows are removed — the long-lived
+// The observer is still rebuilt whenever rows are removed; the long-lived
 // singleton's onUnmounted never fires mid-session, so a stale observer would pin
 // every detached offscreen element forever.
 watch(
@@ -405,13 +405,13 @@ onUnmounted(() => io?.disconnect());
 }
 /* Loading: a small spinner centered on the black thumbnail. Modeled on the
    working viewport `.spinner`, with two iOS/WebKit guards:
-   1. Solid rgba borders, never color-mix(…, transparent) — WebKit in in-app web
+   1. Solid rgba borders, never color-mix(…, transparent). WebKit in in-app web
       views treats that as invalid and drops the whole `border` (width 0), so the
       spinner is invisible. The thumb is always #000, so white-alpha is
       theme-agnostic and always contrasts.
    2. `will-change: transform` promotes the spinner onto its own compositor layer.
       Its parent `.rail__thumb` has `overflow: hidden` + `border-radius`, and iOS
-      Safari fails to repaint a rotating child under that rounded clip — the ring
+      Safari fails to repaint a rotating child under that rounded clip: the ring
       renders but sits frozen. Compositing it separately restores the spin.
    No `prefers-reduced-motion` guard: the viewport `.spinner` has none, and the
    rail is expected to match it. */
@@ -581,7 +581,7 @@ onUnmounted(() => io?.disconnect());
      no "above the rows" to stick to, and the desktop -8px offset assumes the
      vertical layout's 8px padding (mobile uses 6px). Instead each group header is
      its own narrow, non-shrinking tile in the flow, right before that study's
-     rows — a vertical gutter between studies rather than a banner.
+     rows: a vertical gutter between studies rather than a banner.
 
      Its content is one centred block, not pinned to opposite edges: `.rail` sets
      no align-items, so the tile stretches to the height of the series tiles beside
@@ -621,7 +621,7 @@ onUnmounted(() => io?.disconnect());
   .rail__group-lines {
     width: 100%;
   }
-  /* Wrap rather than truncate "HRCT THORAX" to "HRCT T…" — the tile has height to
+  /* Wrap rather than truncate "HRCT THORAX" to "HRCT T…", because the tile has height to
      spare, and width is what's scarce. Desktop keeps its single-line nowrap: there
      the rail is a narrow vertical column and height is the scarce axis instead.
      Dropping to 10px and shedding the uppercase tracking buys ~2 characters per

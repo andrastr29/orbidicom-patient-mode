@@ -4,7 +4,7 @@ node_modules/
 *.tsbuildinfo
 coverage/
 CHANGELOG.md
-# Helm chart templates are Go-templated YAML — not Prettier-formattable.
+# Helm chart templates are Go-templated YAML, not Prettier-formattable.
 helm/
 
 # Subagent-driven-development scratch workspace (git-ignored tooling artifacts).

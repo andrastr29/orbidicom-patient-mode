@@ -1,5 +1,5 @@
 // Tiny reactive i18n for the viewer UI. The active language is a Vue ref, so
-// t() read inside a template/render or computed re-renders when setLang() runs —
+// t() read inside a template/render or computed re-renders when setLang() runs,
 // letting the in-app language switcher change the UI live.
 import { ref } from "vue";
 import { dicomDate } from "@orbidicom/core";
@@ -2049,7 +2049,7 @@ export function isRtl(code: string = current.value): boolean {
   return RTL_LANGS.has(code);
 }
 
-/** The `dir` attribute value ("rtl" | "ltr") for a language — drives layout mirroring. */
+/** The `dir` attribute value ("rtl" | "ltr") for a language; drives layout mirroring. */
 export function dir(code: string = current.value): "rtl" | "ltr" {
   return isRtl(code) ? "rtl" : "ltr";
 }
@@ -2074,7 +2074,7 @@ export function t(key: I18nKey): string {
 const displayNames = new Map<string, Intl.DisplayNames>();
 
 /**
- * A language's name rendered IN the active UI language (an exonym) — e.g. with
+ * A language's name rendered IN the active UI language (an exonym). For example, with
  * Turkish active, `localeName("ko")` is "Korece"; with English, "Korean". Uses
  * the platform's `Intl.DisplayNames`; falls back to the locale's own endonym
  * (from `LOCALES`) if the API is unavailable or returns nothing. Reads the active
@@ -2090,7 +2090,7 @@ export function localeName(code: string, lang: string = current.value): string {
     const name = dn.of(code);
     if (name && name !== code) return name;
   } catch {
-    /* Intl.DisplayNames unsupported — fall back to the endonym below. */
+    /* Intl.DisplayNames unsupported; fall back to the endonym below. */
   }
   return LOCALES.find((l) => l.code === code)?.label ?? code;
 }
@@ -2100,7 +2100,7 @@ export function localeName(code: string, lang: string = current.value): string {
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
 
 /**
- * A DICOM DA string ("YYYYMMDD") rendered in the active UI language — e.g. with
+ * A DICOM DA string ("YYYYMMDD") rendered in the active UI language. For example, with
  * English active, "20260314" is "Mar 14, 2026"; with Japanese, "2026年3月14日".
  * Parsing is core's `dicomDate` (which also accepts the wadouri loader's
  * pre-parsed form); formatting stays here so core keeps no locale state.
@@ -2112,7 +2112,7 @@ export function formatDicomDate(da?: string, lang: string = current.value): stri
   const iso = dicomDate(da);
   if (!iso) return "";
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return iso; // not a date we can format — show it as-is
+  if (!m) return iso; // not a date we can format, so show it as-is
   try {
     let fmt = dateFormats.get(lang);
     if (!fmt) {

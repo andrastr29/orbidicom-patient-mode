@@ -5,17 +5,17 @@ name: Publish to npm
 # `npx orbidicom` never lags the library it bundles. `pnpm build` rebuilds the demo
 # into the CLI's public/ before packing, so the CLI ships the just-built viewer.
 #
-# Auth: npm OIDC "trusted publishing" — no token. npm trusts this workflow via the
+# Auth: npm OIDC "trusted publishing", with no token. npm trusts this workflow via the
 # trusted publisher configured on each package (GitHub Actions · docorbitapp/orbidicom
 # · release.yml). NOTE: the `orbidicom` package needs its OWN trusted-publisher entry
 # configured on npm (same as core/vue) or its publish step fails ENEEDAUTH.
 # Two requirements the obvious `pnpm -r publish` doesn't meet:
 #   1. OIDC publishing needs the npm CLI >= 11.5.1 (Node 20 ships npm 10; pnpm's
-#      publish delegates to that npm and fails ENEEDAUTH) — so we upgrade npm and
+#      publish delegates to that npm and fails ENEEDAUTH), so we upgrade npm and
 #      publish with it directly.
-#   2. npm can't read pnpm's `workspace:*` deps — so we `pnpm pack` first, which
+#   2. npm can't read pnpm's `workspace:*` deps, so we `pnpm pack` first, which
 #      rewrites them to real versions in the tarball, then `npm publish` the tarball.
-# Provenance is intentionally off — it requires a public repo.
+# Provenance is intentionally off; it requires a public repo.
 on:
   push:
     tags:
@@ -43,7 +43,7 @@ jobs:
 
       # NOT npm@latest: npm 12 requires node >=22, so on this node-20 runner
       # `npm@latest` resolves to a version it cannot install and the release dies
-      # here (EBADENGINE) — a break that arrives on its own, with no change to
+      # here (EBADENGINE): a break that arrives on its own, with no change to
       # this repo, the day npm cuts a major. Pin the range that actually states
       # our requirement: OIDC trusted publishing needs npm >= 11.5.1.
       - name: Upgrade npm for OIDC trusted publishing

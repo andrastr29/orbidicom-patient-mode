@@ -21,7 +21,7 @@
         </svg>
         <span>{{ t("hint") }}</span>
       </p>
-      <!-- About: which build of the viewer is running. Untranslated on purpose —
+      <!-- About: which build of the viewer is running. Untranslated on purpose:
            the product name and a semver string read the same in every locale, and
            dir="ltr" keeps them in that order inside an RTL layout. -->
       <p class="dock__about" dir="ltr">
@@ -80,7 +80,7 @@ defineProps<{ open?: boolean }>();
   height: 14px;
   opacity: 0.8;
 }
-/* Sits under a hairline at the very bottom of the cluster — present, but the
+/* Sits under a hairline at the very bottom of the cluster: present, but the
    quietest thing in the rail. */
 .dock__about {
   display: flex;

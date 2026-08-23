@@ -9,10 +9,10 @@ type Point3 = [number, number, number];
  * `annotation.state.addAnnotation(ann, m.frameOfReferenceUID)`.
  *
  * Requirements verified against Cornerstone tools 5.0.13:
- * - `isVisible: true` is REQUIRED — the StackViewport display filter drops
+ * - `isVisible: true` is REQUIRED: the StackViewport display filter drops
  *   annotations whose `isVisible` is falsy.
  * - `metadata.referencedImageId` must equal the slice's imageId for on-slice render.
- * - `cachedStats: {}` is intentional — every tool recomputes stats from world
+ * - `cachedStats: {}` is intentional: every tool recomputes stats from world
  *   points at render time when the target key is missing.
  * - `metadata.orbidicomResultId` is custom provenance; the manager stores the
  *   object by reference, so it survives `getAllAnnotations()` and lets the panel

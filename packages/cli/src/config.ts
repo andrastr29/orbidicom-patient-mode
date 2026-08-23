@@ -9,7 +9,7 @@ export interface ConfigOptions {
   study?: string;
   /** PACS auth strategy. "none"/omitted → same-origin (no header, cookies still
    *  sent same-origin). NOTE: basic/bearer credentials are embedded in the
-   *  client-readable config.js — only use them on trusted/internal deployments. */
+   *  client-readable config.js, so only use them on trusted/internal deployments. */
   auth?: "none" | "basic" | "bearer" | "cookie";
   token?: string;
   username?: string;

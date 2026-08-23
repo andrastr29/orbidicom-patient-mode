@@ -24,10 +24,10 @@ pacs:
   # Optionally auto-open a study on load (Study Instance UID).
   studyUid: ""
   # PACS authentication. kind ∈ none | cookie | bearer | basic.
-  #   none   (default) — same-origin: no Authorization header; the browser still
+  #   none   (default): same-origin, no Authorization header; the browser still
   #          sends cookies for same-origin requests (the proxy.enabled default).
-  #   cookie — send credentials cross-origin (session cookie).
-  #   bearer/basic — send a token / Basic header.
+  #   cookie: send credentials cross-origin (session cookie).
+  #   bearer/basic: send a token / Basic header.
   # SECURITY: bearer/basic credentials are written into the client-readable
   # config.js and visible to any user of the page. Prefer "cookie" or a proxy that
   # injects auth server-side. If you must use a token/password, inject it from a

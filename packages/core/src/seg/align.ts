@@ -1,5 +1,5 @@
 /**
- * SEG render-prep — pure helpers that bridge decoded {@link SegLabelmap}s (keyed
+ * SEG render-prep: pure helpers that bridge decoded {@link SegLabelmap}s (keyed
  * by source SOP Instance UID) and a rendered image *stack* (a list of image ids,
  * each with its SOP Instance UID). The Cornerstone labelmap glue consumes these
  * to create per-slice derived labelmap images. No DOM / Cornerstone here.
@@ -16,7 +16,7 @@ export interface AlignedLabelmap {
 /**
  * Match each labelmap to the stack image with the same SOP Instance UID, in stack
  * order. Stack images without a labelmap, and labelmaps without a stack image, are
- * dropped — so the result is exactly the slices that need a labelmap drawn.
+ * dropped, so the result is exactly the slices that need a labelmap drawn.
  */
 export function alignLabelmapsToStack(
   stack: { imageId: string; sopInstanceUID: string }[],

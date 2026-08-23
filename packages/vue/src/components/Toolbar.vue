@@ -245,7 +245,7 @@
     </button>
 
     <!-- Multi-viewport reading aids. Hidden in single view, where they mean
-         nothing — no second viewport to follow along. -->
+         nothing, with no second viewport to follow along. -->
     <template v-if="canLinkViewports">
       <button
         v-tip="t('syncScroll')"
@@ -607,8 +607,8 @@ const overlayTitle = computed(() =>
 
 // Selectable viewport grids. Each option's `value` is what setLayout receives:
 // a numeric string for the cell count, or a string sentinel. Two 2-cell variants
-// share the count but differ in orientation — "2" is side-by-side (1×2), "2v" is
-// stacked (2×1) — so they need distinct option values.
+// share the count but differ in orientation: "2" is side-by-side (1×2), "2v" is
+// stacked (2×1), so they need distinct option values.
 const LAYOUT_OPTIONS: { value: string; label: string }[] = [
   { value: "1", label: "1×1" },
   { value: "2", label: "1×2" },
@@ -619,7 +619,7 @@ const LAYOUT_OPTIONS: { value: string; label: string }[] = [
   { value: "10", label: "2×5" },
 ];
 // The MPR / 3D option is always listed (so it's discoverable), but disabled for
-// series that can't be reconstructed — a tooltip then explains why.
+// series that can't be reconstructed; a tooltip then explains why.
 const layoutOptions = computed<{ value: string; label: string; disabled: boolean }[]>(() => [
   ...LAYOUT_OPTIONS.map((o) => ({ ...o, disabled: false })),
   { value: "mpr", label: t("mpr"), disabled: !props.canMpr },
@@ -631,14 +631,14 @@ function onLayoutChange(value: string) {
 
 // The MPR button toggles: into the reconstruction, or back out to the grid that
 // was showing. `layout` keeps its cell count while MPR is up, so leaving restores
-// it — including the stacked 2×1 variant, which needs its "2v" sentinel back.
+// it, including the stacked 2×1 variant, which needs its "2v" sentinel back.
 function toggleMpr() {
   if (!props.mprActive) return emit("setLayout", "mpr");
   emit("setLayout", props.layout === 2 && props.stacked ? "2v" : props.layout);
 }
 
 // The whole field is a <label>, but tapping its leading icon/label (or the
-// chevron) only FOCUSES the inner <select> — it doesn't open the picker. Open it
+// chevron) only FOCUSES the inner <select>; it doesn't open the picker. Open it
 // explicitly so any tap on the field acts like a dropdown. showPicker() is
 // supported in modern Chrome/Safari; .focus() is the graceful fallback elsewhere.
 function openSelect(e: MouseEvent) {
@@ -649,7 +649,7 @@ function openSelect(e: MouseEvent) {
   try {
     (sel as HTMLSelectElement & { showPicker?: () => void }).showPicker?.();
   } catch {
-    /* showPicker unsupported or blocked — focus is the fallback */
+    /* showPicker unsupported or blocked; focus is the fallback */
   }
 }
 
@@ -727,7 +727,7 @@ for (const [key, cmd] of Object.entries(DEFAULT_KEYMAP)) {
 // Native `title` tooltips are slow (~0.5s) and unstyled. `v-tip` renders a themed
 // chip instead, teleported to <body> so the toolbar's horizontal scroll can't clip
 // it, and shows the action's keyboard shortcut as keycaps. It appears for mouse
-// hover and keyboard focus only — never on touch (a sticky tooltip with no way to
+// hover and keyboard focus only, never on touch (a sticky tooltip with no way to
 // dismiss). The directive also mirrors the label into aria-label so icon-only
 // buttons keep an accessible name (previously carried by `title`).
 type TipValue = string | { text: string; key?: string };
@@ -901,8 +901,8 @@ onUnmounted(() => clearTimeout(tipTimer));
   text-align: center;
   font-weight: 600;
 }
-/* W/L + grid controls render as one bordered "field" — a leading label/icon, the
-   value, and a trailing chevron — so the whole control unmistakably reads as a
+/* W/L + grid controls render as one bordered "field": a leading label/icon, the
+   value, and a trailing chevron, so the whole control unmistakably reads as a
    dropdown on every device. The native <select> is kept (OS picker on mobile,
    accessible, tests intact), just made transparent/borderless inside the field. */
 .wl,
@@ -960,7 +960,7 @@ onUnmounted(() => clearTimeout(tipTimer));
   color: var(--text);
   font: inherit;
   font-size: 13px;
-  /* iOS Safari won't vertically center a borderless select on its own — pin the
+  /* iOS Safari won't vertically center a borderless select on its own, so pin the
      value with an explicit line-height and start-align it next to the label. */
   line-height: 32px;
   text-align: left;
@@ -1046,7 +1046,7 @@ onUnmounted(() => clearTimeout(tipTimer));
   border-radius: var(--r-sm);
   background: var(--panel);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-  /* Never intercept the pointer — the tooltip is a passive readout. */
+  /* Never intercept the pointer; the tooltip is a passive readout. */
   pointer-events: none;
   white-space: nowrap;
   font-family: var(--font);
@@ -1061,7 +1061,7 @@ onUnmounted(() => clearTimeout(tipTimer));
   display: inline-flex;
   gap: 3px;
 }
-/* Keycap: a small teal-tinted cap that teaches the button's shortcut — the one
+/* Keycap: a small teal-tinted cap that teaches the button's shortcut: the one
    deliberate flourish, echoing the accent used across the viewer. */
 .tip__key {
   min-width: 16px;

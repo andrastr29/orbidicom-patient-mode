@@ -10,7 +10,7 @@ export interface Thumbnailer {
 export interface ThumbnailerOptions {
   /** Offscreen element edge in CSS px; bounds the captured JPEG. Default 128. */
   size?: number;
-  /** JPEG quality 0..1 — thumbnails tolerate compression. Default 0.7. */
+  /** JPEG quality 0..1; thumbnails tolerate compression. Default 0.7. */
   quality?: number;
 }
 
@@ -57,7 +57,7 @@ export function createThumbnailer(opts: ThumbnailerOptions = {}): Thumbnailer {
         const h = ensure();
         // A bad frame can make setStack (decode/network) or capture reject; the
         // contract is "null if it cannot be captured", so swallow and resolve
-        // null rather than propagating — consistent with captureSliceJpeg's own
+        // null rather than propagating, consistent with captureSliceJpeg's own
         // null path.
         try {
           await h.setStack([imageId]);

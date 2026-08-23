@@ -9,7 +9,7 @@ export type AuthStrategy =
  * Synchronous request headers for an auth strategy. Covers the static cases:
  * basic (base64 Authorization), bearer-with-string-token, and custom headers().
  * `none`/`cookie` add no headers (cookie auth rides on `withCredentials`).
- * Async cases — a bearer token *function* and custom `bootstrap()` — are the
+ * Async cases (a bearer token *function* and custom `bootstrap()`) are the
  * caller's responsibility (handled in the Vue layer), so they return `{}` here.
  */
 export function authHeaders(auth: AuthStrategy): Record<string, string> {

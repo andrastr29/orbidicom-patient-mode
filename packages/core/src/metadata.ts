@@ -10,7 +10,7 @@ export type MetaGet = (module: string, imageId: string) => unknown;
 export interface ImageMetadata {
   patientName?: string;
   patientId?: string;
-  /** SOP Instance UID of this image — used to align per-slice overlays (e.g. SEG). */
+  /** SOP Instance UID of this image; used to align per-slice overlays (e.g. SEG). */
   sopInstanceUID?: string;
   patientSex?: string;
   patientBirthDate?: string;
@@ -107,7 +107,7 @@ export async function readImageMetadata(imageId: string, get?: MetaGet): Promise
   const g = get ?? (await ensureGet());
   const patient = asDict(g("patientModule", imageId));
   // Sex/age live in patientStudyModule under the wadouri loader (wadors keeps
-  // sex on patientModule too) — read both and prefer whichever is present.
+  // sex on patientModule too), so read both and prefer whichever is present.
   const patientStudy = asDict(g("patientStudyModule", imageId));
   const study = asDict(g("generalStudyModule", imageId));
   const series = asDict(g("generalSeriesModule", imageId));
@@ -333,7 +333,7 @@ const GROUP_SPECS: { id: string; fields: FieldSpec[] }[] = [
   },
 ];
 
-// Every module any field references — fetched once per image.
+// Every module any field references, fetched once per image.
 const ALL_MODULES = [
   "patientModule",
   "patientStudyModule",
@@ -360,7 +360,7 @@ function resolveField(dicts: Record<string, Dict>, f: FieldSpec): string | undef
 
 /**
  * Read the full, human-readable metadata for an image as labelled rows grouped
- * into Patient / Study / Series / Image / Equipment sections — the data behind
+ * into Patient / Study / Series / Image / Equipment sections: the data behind
  * the metadata reader panel. Rows with no value and groups with no rows are
  * dropped, so a sparse source (e.g. NIfTI) yields only the sections it has.
  * `get` is injectable for testing; it defaults to `metaData.get`.

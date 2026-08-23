@@ -4,7 +4,7 @@
 ---
 
 Add reference lines: while you scroll the focused grid cell, the other cells draw
-a line showing where that slice cuts through them — scroll an axial series on the
+a line showing where that slice cuts through them: scroll an axial series on the
 left and the coronal on the right marks the level. Toggled from the toolbar and
 off by default, because the line is genuinely in the way on some studies.
 

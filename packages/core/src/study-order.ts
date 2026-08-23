@@ -6,8 +6,8 @@ import type { SeriesSummary } from "./datasource";
  *
  * Callers sort within a study themselves (both DICOM data sources already sort by
  * SeriesNumber); this only reorders whole study blocks. That split exists because
- * `SeriesSummary` carries no series number, so the viewer — which re-orders after
- * appending a study whose block is already sorted — has nothing to sort by.
+ * `SeriesSummary` carries no series number, so the viewer (which re-orders after
+ * appending a study whose block is already sorted) has nothing to sort by.
  *
  * DICOM DA strings ("YYYYMMDD") compare correctly as plain strings, so an undated
  * study yields "" and lands last under a descending compare. First-appearance

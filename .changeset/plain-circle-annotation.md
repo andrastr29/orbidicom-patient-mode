@@ -3,8 +3,8 @@
 "@orbidicom/vue": minor
 ---
 
-Add a plain circle annotation tool (`C`). It draws a circle and nothing else — no
-area, no mean, no text box — for pointing at a finding without cluttering the
+Add a plain circle annotation tool (`C`). It draws a circle and nothing else: no
+area, no mean, no text box, for pointing at a finding without cluttering the
 image. The measuring ROIs (ellipse, rectangle) are unchanged.
 
 Internally, the tool-name sets that measurement export, undo/redo and the delete

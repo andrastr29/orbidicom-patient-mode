@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-// export.ts transitively imports cornerstone via measurements.ts — stub it (as the
+// export.ts transitively imports cornerstone via measurements.ts, so stub it (as the
 // sibling ai-export spec does). The round-trip logic under test is cornerstone-free.
 vi.mock("@cornerstonejs/tools", () => ({}));
 vi.mock("@cornerstonejs/core", () => ({}));

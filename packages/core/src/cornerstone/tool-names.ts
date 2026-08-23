@@ -4,7 +4,7 @@
  * sets are declared, so measurement export, undo/redo and the delete overlay can
  * never drift apart (they each used to keep a private copy).
  *
- * Adding a drawing tool means adding it here — to `MEASUREMENT_TOOLS` if it
+ * Adding a drawing tool means adding it here: to `MEASUREMENT_TOOLS` if it
  * yields a number worth exporting, to `SHAPE_TOOLS` if it is purely visual.
  */
 
@@ -24,7 +24,7 @@ export const MEASUREMENT_TOOLS = [
  * Purely visual annotations: the user draws a shape to point at something, and no
  * numbers are computed or displayed. `CircleROI` is registered with
  * `calculateStats: false` (see `cornerstone/init.ts`), which skips both the stats
- * pass and the measurement text box — a plain circle, like a drawing tool's.
+ * pass and the measurement text box, leaving a plain circle like a drawing tool's.
  *
  * Deliberately NOT part of measurement export: there is no value to export.
  */
@@ -32,6 +32,6 @@ export const SHAPE_TOOLS = ["CircleROI"] as const;
 
 /**
  * Everything the user can draw. Undo/redo and the per-annotation delete control
- * act on all of it — a plain circle is just as deletable as a length.
+ * act on all of it: a plain circle is just as deletable as a length.
  */
 export const ANNOTATION_TOOLS: readonly string[] = [...MEASUREMENT_TOOLS, ...SHAPE_TOOLS];

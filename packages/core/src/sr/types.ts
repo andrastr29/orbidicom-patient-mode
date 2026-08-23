@@ -1,6 +1,6 @@
 // Normalized DICOM Structured Report (SR) tree. Both source adapters (DICOMweb
 // DICOM-JSON and local dicom-parser) emit this shape, so the UI renders SR
-// source-agnostically — it never branches on backend type.
+// source-agnostically; it never branches on backend type.
 
 export type SrValueType =
   | "CONTAINER"

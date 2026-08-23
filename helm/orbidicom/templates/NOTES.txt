@@ -33,4 +33,4 @@ PACS mode: the viewer calls DICOMweb at "{{ .Values.pacs.url }}".
 Local-file mode: users drag .dcm / .zip / .nii files in the browser; no PACS.
 {{- end }}
 
-Tweak settings with `helm upgrade ... --set pacs.proxy.upstream=...` — see values.yaml.
+Tweak settings with `helm upgrade ... --set pacs.proxy.upstream=...`; see values.yaml.

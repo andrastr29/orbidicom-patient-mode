@@ -15,7 +15,7 @@
 <script setup lang="ts">
 // Recursive renderer for one SR content node. Self-references by name (Vue 3
 // resolves recursive components from the filename). All values are rendered via
-// text interpolation — never v-html — so SR content can't inject markup.
+// text interpolation (never v-html), so SR content can't inject markup.
 import { computed } from "vue";
 import type { SrNode } from "@orbidicom/core";
 import { t } from "../i18n";
@@ -57,7 +57,7 @@ const value = computed(() => {
     case "CONTAINER":
       return ""; // heading only; children carry the content
     default:
-      // SCOORD / SCOORD3D / TCOORD / IMAGE / WAVEFORM / COMPOSITE / UNKNOWN —
+      // SCOORD / SCOORD3D / TCOORD / IMAGE / WAVEFORM / COMPOSITE / UNKNOWN are
       // not rendered as rich content in this version (placeholder).
       return t("srUnsupported");
   }

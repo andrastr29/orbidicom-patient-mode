@@ -28,14 +28,14 @@ export interface LocalTags {
    *  study, which is how loose files with no study identity behaved before
    *  multi-study support. Optional so an injected `parseFile` needn't supply it. */
   studyInstanceUID?: string;
-  /** Raw DICOM DA string (0008,0020), e.g. "20240115" — orders studies newest-first. */
+  /** Raw DICOM DA string (0008,0020), e.g. "20240115"; orders studies newest-first. */
   studyDate?: string;
   studyDescription?: string;
-  /** PatientName (0010,0010), raw (e.g. "DOE^JANE") — matching how the worklist
+  /** PatientName (0010,0010), raw (e.g. "DOE^JANE"), matching how the worklist
    *  and the rail's group headers render it. */
   patientName?: string;
   patientId?: string;
-  /** NumberOfFrames (0028,0008) — how many frames this one instance carries.
+  /** NumberOfFrames (0028,0008): how many frames this one instance carries.
    *  Multi-frame objects (Enhanced PET/CT, NM, cine) pack every slice into a
    *  single file; each frame is a separately-addressable image. Absent/≤1 means a
    *  classic single-frame instance. */
@@ -82,7 +82,7 @@ export interface LocalOptions {
  * A {@link DataSource} for local `.dcm` files with no PACS. Files are registered
  * with Cornerstone's wadouri file manager (each yields a `dicomfile:` imageId)
  * and grouped into series via parsed DICOM tags, then into studies by
- * StudyInstanceUID — a dropped folder or archive holding a current exam and its
+ * StudyInstanceUID, so a dropped folder or archive holding a current exam and its
  * prior surfaces as two groups rather than one merged pile. Files carrying no
  * StudyInstanceUID fall back to a synthetic "local" study. Everything already
  * ingested is returned regardless of the `studyUids` argument, which has no
@@ -94,7 +94,7 @@ export class LocalDataSource implements DataSource {
     encapsulatedPdf: true,
     reports: { pdf: true, sr: true },
     // A dropped folder can hold several studies. `studySearch` stays absent:
-    // there is no worklist to query, so the viewer offers no add-study button —
+    // there is no worklist to query, so the viewer offers no add-study button;
     // the only way to add files locally is to drop more of them.
     multiStudy: true,
   };
@@ -130,7 +130,7 @@ export class LocalDataSource implements DataSource {
       try {
         t = await this.parseFile(file);
       } catch {
-        continue; // not a DICOM file — skip it
+        continue; // not a DICOM file, so skip it
       }
       // Report documents (encapsulated PDFs, …) carry no PixelData but are still
       // rendered as their own series, so they bypass the skips below. Deduped by
@@ -147,7 +147,7 @@ export class LocalDataSource implements DataSource {
         continue;
       }
       // Skip non-renderable modalities (SR/PR/KO/PLAN) and any instance without
-      // PixelData (DICOMDIR / presentation states / reports — often blank
+      // PixelData (DICOMDIR / presentation states / reports, often blank
       // modality). Either would hang the viewer on a series with nothing to decode.
       if (NON_RENDERABLE_MODALITIES.has(t.modality?.toUpperCase())) continue;
       if (t.hasPixelData === false) continue;
@@ -195,7 +195,7 @@ export class LocalDataSource implements DataSource {
   }
 
   async getSeries(_studyUids: string[]): Promise<SeriesSummary[]> {
-    // Sort by series number first, then reorder whole study blocks newest-first —
+    // Sort by series number first, then reorder whole study blocks newest-first;
     // grouping preserves relative order, so each block stays series-number-ordered.
     // A single study (the common local-file case) is returned untouched.
     return orderStudyGroups(
@@ -281,7 +281,7 @@ function framesToImageIds(imageId: string, frames: number): string[] {
 
 // --- default wiring to Cornerstone / dicom-parser ----------------------------
 // Lazy dynamic imports so importing LocalDataSource for its types never eagerly
-// pulls the loader/parser (and keeps the module ESM-clean — no require()).
+// pulls the loader/parser (and keeps the module ESM-clean, with no require()).
 
 let loaderP: Promise<{ wadouri: { fileManager: { add: (f: File) => string } } }> | undefined;
 async function defaultAddFile(file: File): Promise<string> {
@@ -291,7 +291,7 @@ async function defaultAddFile(file: File): Promise<string> {
 }
 
 const DICM_MAGIC = [0x44, 0x49, 0x43, 0x4d]; // "DICM" at byte offset 128
-// A headerless dataset (no 128-byte preamble — common on CD/DVD exports) is still
+// A headerless dataset (no 128-byte preamble, common on CD/DVD exports) is still
 // parsed, but only up to this size, so a large non-DICOM payload dropped inside a
 // study folder can't OOM the tab during the magic-byte sniff.
 const NO_PREAMBLE_MAX_BYTES = 80 * 1024 * 1024;
@@ -313,7 +313,7 @@ async function defaultParseFile(file: File): Promise<LocalTags> {
 
   // Cheap magic-byte sniff first (only the first 132 bytes): a Part-10 DICOM file
   // has "DICM" at offset 128. Buffer the whole file only once it's worth it; a
-  // headerless dataset has no magic, so parse it too — but only when small enough.
+  // headerless dataset has no magic, so parse it too, but only when small enough.
   const head = new Uint8Array(await file.slice(0, 132).arrayBuffer());
   const hasPreamble = head.length >= 132 && DICM_MAGIC.every((b, i) => head[128 + i] === b);
   if (!hasPreamble && file.size > NO_PREAMBLE_MAX_BYTES) throw new Error("not a DICOM file");
@@ -323,7 +323,7 @@ async function defaultParseFile(file: File): Promise<LocalTags> {
   try {
     ds = dicomParser.parseDicom(bytes);
   } catch {
-    // Headerless / no-preamble datasets — retry as Implicit VR Little Endian.
+    // Headerless / no-preamble datasets: retry as Implicit VR Little Endian.
     ds = dicomParser.parseDicom(bytes, { TransferSyntaxUID: "1.2.840.10008.1.2" });
   }
   // Encapsulated PDF (Encapsulated PDF Storage SOP class, or any instance carrying
@@ -339,7 +339,7 @@ async function defaultParseFile(file: File): Promise<LocalTags> {
     };
   } else if (ds.elements?.["x0040a730"] !== undefined) {
     // Structured Report: an SR Content Sequence (0040,A730) is present. Parse it
-    // now — the dicom-parser DataSet isn't retained past this function.
+    // now, because the dicom-parser DataSet isn't retained past this function.
     report = { kind: "sr", tree: srTreeFromParser(ds as unknown as ParserDataSet) };
   }
 
@@ -350,7 +350,7 @@ async function defaultParseFile(file: File): Promise<LocalTags> {
     seriesDescription: ds.string("x0008103e") || "",
     sopInstanceUID: ds.string("x00080018") || "",
     instanceNumber: Number(ds.string("x00200013")) || 0,
-    // Study-level tags, read from the dataset already in hand — they cost no
+    // Study-level tags, read from the dataset already in hand. They cost no
     // extra work and let a dropped folder holding a current exam plus its prior
     // group into two studies instead of one merged pile.
     studyInstanceUID: ds.string("x0020000d") || "",
@@ -362,7 +362,7 @@ async function defaultParseFile(file: File): Promise<LocalTags> {
     // pack every slice into one file. Absent → single-frame.
     numberOfFrames: Number(ds.string("x00280008")) || 1,
     // PixelData (7FE0,0010) present → a renderable image. Absent → DICOMDIR,
-    // presentation state, structured report, etc. — skipped by addFiles.
+    // presentation state, structured report, etc.), skipped by addFiles.
     hasPixelData: ds.elements?.["x7fe00010"] !== undefined,
     report,
   };

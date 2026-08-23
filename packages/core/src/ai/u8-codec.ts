@@ -2,13 +2,13 @@
  * Portable, lossless tagging of `Uint8Array` fields for JSON round-tripping.
  *
  * `JSON.stringify` turns a `Uint8Array` into an index-keyed object
- * (`{"0":1,"1":2,...}`) that re-parses as a plain, non-typed, non-iterable object —
+ * (`{"0":1,"1":2,...}`) that re-parses as a plain, non-typed, non-iterable object,
  * corrupting segmentation rasters on ai-json export/import. To survive the trip we
  * encode each `Uint8Array` as a tagged base64 form `{ "$u8": "<base64>" }` on
  * export and decode it back on import.
  *
  * The base64 codec is hand-rolled so it runs identically in the browser and in
- * Node/Vitest — it does NOT depend on `Buffer`, `btoa`, or `atob` (none of which
+ * Node/Vitest: it does NOT depend on `Buffer`, `btoa`, or `atob` (none of which
  * are guaranteed across those environments).
  */
 

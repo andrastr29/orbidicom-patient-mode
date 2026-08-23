@@ -191,8 +191,8 @@ describe("createStack", () => {
   // Regression: every grid cell used to get its OWN RenderingEngine. Cornerstone
   // 5's default engine eagerly allocates a POOL of webGlContextCount (=7) WebGL
   // contexts PER engine, so N cells burned ~7·N contexts; a 2×2 grid crossed the
-  // browser's ~16-context ceiling and the browser discarded the OLDEST context —
-  // the first-loaded cell went black and never recovered. All cells must share
+  // browser's ~16-context ceiling and the browser discarded the OLDEST context,
+  // so the first-loaded cell went black and never recovered. All cells must share
   // ONE engine so the pooled contexts are bounded and reused.
   it("shares a single RenderingEngine across all cells", () => {
     const a = createStack(fakeEl());
@@ -221,7 +221,7 @@ describe("createStack", () => {
   it("can opt a viewport out of the tool group entirely (the offscreen thumbnailer)", () => {
     const s = createStack(fakeEl(), {}, { toolGroupId: null });
     const id = h.engine.enableElement.mock.calls[0][0].viewportId;
-    // It still gets a viewport on the shared engine — just no tool group, so
+    // It still gets a viewport on the shared engine, just no tool group, so
     // display-only tools never draw into it.
     expect(h.engine.enableElement).toHaveBeenCalledTimes(1);
     expect(h.toolGroup.addViewport).not.toHaveBeenCalled();

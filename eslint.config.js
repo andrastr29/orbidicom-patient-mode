@@ -7,7 +7,7 @@ import configPrettier from "eslint-config-prettier";
 export default tseslint.config(
   {
     // dist + the CLI's bundled demo build (packages/cli/public) are generated,
-    // minified artifacts — not source. (Prettier skips them via .gitignore;
+    // minified artifacts, not source. (Prettier skips them via .gitignore;
     // ESLint flat config does not read .gitignore, so list them here.)
     ignores: [
       "**/dist/**",

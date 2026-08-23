@@ -2,11 +2,11 @@
 
 OrbiDICOM publishes three public packages from this monorepo:
 
-| Package           | Contents                                    |
-| ----------------- | ------------------------------------------- |
-| `@orbidicom/core` | Engine (built `dist/`)                      |
-| `@orbidicom/vue`  | Vue 3 UI (ships TypeScript source)          |
-| `orbidicom`       | CLI — bundles the built viewer in `public/` |
+| Package           | Contents                                   |
+| ----------------- | ------------------------------------------ |
+| `@orbidicom/core` | Engine (built `dist/`)                     |
+| `@orbidicom/vue`  | Vue 3 UI (ships TypeScript source)         |
+| `orbidicom`       | CLI, bundles the built viewer in `public/` |
 
 `@orbidicom/demo` and `create-orbidicom` are `private` and are **not** published
 (`pnpm -r publish` skips private packages). The CLI ships the demo build itself, so
@@ -18,7 +18,7 @@ Publishing is automated by [`.github/workflows/release.yml`](../.github/workflow
 which runs on a version tag (`v*`) or a manual dispatch. It builds, tests, then runs
 `pnpm -r publish`. `workspace:*` dependencies are rewritten to real versions by pnpm.
 
-Auth uses **npm OIDC trusted publishing** — there is no long-lived `NPM_TOKEN`. The
+Auth uses **npm OIDC trusted publishing**; there is no long-lived `NPM_TOKEN`. The
 workflow presents a short-lived OIDC token (`id-token: write`) that npm trusts because
 of the trusted publisher configured on each package. Provenance is attested
 automatically (`NPM_CONFIG_PROVENANCE`).
@@ -40,7 +40,7 @@ automatically (`NPM_CONFIG_PROVENANCE`).
 > First publish only: npm trusted publishers normally attach to an existing package.
 > For brand-new package names you may need to do the very first publish with a granular
 > automation token (then switch to OIDC), or create the trusted publisher at the org
-> level — see npm's "trusted publishing for new packages" docs.
+> level; see npm's "trusted publishing for new packages" docs.
 
 ## Cutting a release
 

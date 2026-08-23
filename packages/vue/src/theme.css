@@ -1,4 +1,4 @@
-/* packages/vue/src/theme.css — default OrbiDICOM theme. Override any var on your
+/* packages/vue/src/theme.css: the default OrbiDICOM theme. Override any var on your
    own .orbidicom container (or :root) to re-skin. Neutral dark palette. */
 .orbidicom {
   --bg: #0b0e0e;
@@ -13,7 +13,7 @@
   --accent-strong: #38b2bd;
   --highlight: #e08636;
   --highlight-strong: #c06f23;
-  /* Oxygen is the project face (the host loads it — see the demo/CLI index.html);
+  /* Oxygen is the project face (the host loads it; see the demo/CLI index.html);
      it degrades cleanly to the system stack when the web font isn't present. */
   --font: "Oxygen", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;

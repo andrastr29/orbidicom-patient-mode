@@ -117,7 +117,7 @@ describe("collectMeasurements", () => {
     ]);
   });
 
-  it("skips plain shape annotations — a CircleROI measures nothing, so there is nothing to export", () => {
+  it("skips plain shape annotations: a CircleROI measures nothing, so there is nothing to export", () => {
     const got = collectMeasurements(() => [ann({ metadata: { toolName: "CircleROI" } })]);
     expect(got).toEqual([]);
   });

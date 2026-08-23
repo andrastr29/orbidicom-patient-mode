@@ -34,7 +34,7 @@ type OverlayViewportLike = OverlayViewport & { id: string };
 const props = defineProps<{
   /** Lazily resolves this cell's Cornerstone viewport (null until the stack mounts). */
   getViewport: () => OverlayViewportLike | null;
-  /** This cell's `.cs-viewport` element — source of element-scoped render events. */
+  /** This cell's `.cs-viewport` element: the source of element-scoped render events. */
   element: HTMLElement | null;
   /** Bumped by the parent whenever annotation state changes, to force a recompute. */
   version: number;

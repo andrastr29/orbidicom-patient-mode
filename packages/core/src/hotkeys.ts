@@ -1,11 +1,11 @@
 /**
- * Keyboard shortcuts — a framework-agnostic keymap + resolver. This module is
+ * Keyboard shortcuts: a framework-agnostic keymap + resolver. This module is
  * pure data and pure functions (no DOM, no Vue, no Cornerstone): the UI layer
  * listens for keydown, calls {@link resolveHotkey}, and dispatches the returned
  * command. Hosts can pass their own {@link Keymap} to remap or disable keys.
  */
 
-/** Logical tool name — a key of the `TOOLS` map exported from `cornerstone/init`. */
+/** Logical tool name: a key of the `TOOLS` map exported from `cornerstone/init`. */
 export type ToolKey =
   | "WindowLevel"
   | "Pan"

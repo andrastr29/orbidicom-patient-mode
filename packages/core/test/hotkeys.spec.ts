@@ -44,7 +44,7 @@ describe("resolveHotkey", () => {
     expect(resolveHotkey({ key: "w", ctrlKey: true })).toBeNull();
     expect(resolveHotkey({ key: "r", metaKey: true })).toBeNull();
     expect(resolveHotkey({ key: "z", altKey: true })).toBeNull();
-    // Shift is fine — it doesn't change our single-key bindings.
+    // Shift is fine; it doesn't change our single-key bindings.
     expect(resolveHotkey({ key: "Z" })).toEqual({ kind: "tool", tool: "Zoom" });
   });
 

@@ -60,11 +60,11 @@ const ENCAPSULATED_PDF_SOP = "1.2.840.10008.5.1.4.1.1.104.1";
 
 // Modalities the viewer cannot display: presentation states, key objects and RT
 // plans reference other series with nothing to render on their own. SR is NOT
-// listed here — Structured Reports are rendered (see getStructuredReport); PDF
+// listed here: Structured Reports are rendered (see getStructuredReport); PDF
 // reports (DOC/OT) are likewise kept and handled by the encapsulated-PDF path.
 const NON_RENDERABLE_MODALITIES = new Set(["PR", "KO", "PLAN"]);
 
-/** The subset of dicomweb-client we use — lets tests inject a fake. */
+/** The subset of dicomweb-client we use; lets tests inject a fake. */
 export interface DICOMwebClientLike {
   searchForStudies(opts?: {
     queryParams?: Record<string, string>;
@@ -86,7 +86,7 @@ const num = (obj: Record<string, unknown>, tag: string) => Number(first(obj, tag
  * Like {@link num}, but returns `undefined` when the tag is absent/empty rather
  * than collapsing it to 0. Used for optional QIDO counts (e.g.
  * NumberOfSeriesRelatedInstances) so "the server didn't return a count" isn't
- * conflated with "this series genuinely has zero instances" — the latter marks a
+ * conflated with "this series genuinely has zero instances": the latter marks a
  * report, the former must not disable image previews.
  */
 const numOpt = (obj: Record<string, unknown>, tag: string): number | undefined => {
@@ -201,7 +201,7 @@ export class DicomWebDataSource implements DataSource {
   }
 
   /**
-   * Upload Part-10 instances via STOW-RS — POSTs them as a single
+   * Upload Part-10 instances via STOW-RS, POSTed as a single
    * `multipart/related; type="application/dicom"` body to `/studies` (or
    * `/studies/{uid}`), then parses the Store-Instances response into a
    * {@link StoreResult}.
@@ -261,7 +261,7 @@ export class DicomWebDataSource implements DataSource {
         });
       }
     }
-    // Sort by series number first, then reorder whole study blocks newest-first —
+    // Sort by series number first, then reorder whole study blocks newest-first;
     // grouping preserves relative order, so each block stays series-number-ordered.
     return orderStudyGroups(pairs.sort((a, b) => a.number - b.number).map((p) => p.summary));
   }
@@ -324,7 +324,7 @@ export class DicomWebDataSource implements DataSource {
         });
         continue;
       }
-      if (meta[TAG.ROWS] === undefined) continue; // non-image, non-report — not renderable
+      if (meta[TAG.ROWS] === undefined) continue; // non-image, non-report, so not renderable
       const frames = num(meta, TAG.NUMBER_OF_FRAMES) || 1;
       // Register once under frame 1; multiframe lookups fall back to this entry.
       wadors.metaDataManager.add(
@@ -454,7 +454,7 @@ export class DicomWebDataSource implements DataSource {
   /**
    * WADO-RS rendered thumbnail for the series ({@link DataSource.getThumbnail}).
    * Returns a JPEG Blob, or null if the server has no thumbnail for it (the viewer
-   * then renders one client-side). Never throws — a missing endpoint is expected.
+   * then renders one client-side). Never throws; a missing endpoint is expected.
    */
   async getThumbnail(
     series: SeriesSummary,

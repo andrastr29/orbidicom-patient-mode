@@ -1,5 +1,5 @@
 /**
- * Key-image flagging — the user marks notable slices (a "key image"). The flag
+ * Key-image flagging: the user marks notable slices (a "key image"). The flag
  * set itself is session state owned by the UI; this module is the pure, testable
  * serializer (mirroring `cornerstone/measurements.ts`) plus the shared shape.
  */

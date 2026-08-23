@@ -57,7 +57,7 @@ describe("renderSegmentation", () => {
     const buffers = setupDerived();
     const stack = [
       { imageId: "img:a", sopInstanceUID: "A" },
-      { imageId: "img:x", sopInstanceUID: "X" }, // unsegmented — skipped
+      { imageId: "img:x", sopInstanceUID: "X" }, // unsegmented, so skipped
       { imageId: "img:b", sopInstanceUID: "B" },
     ];
 

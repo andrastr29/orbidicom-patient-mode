@@ -2,7 +2,7 @@
 
 OrbiDICOM ships a container image and a Helm chart, so you can run the viewer on
 Kubernetes in one command. The same image works **local-file-only** or
-**connected to a PACS** — the PACS endpoint is configured at container start, no
+**connected to a PACS**: the PACS endpoint is configured at container start, no
 rebuild needed.
 
 ## TL;DR

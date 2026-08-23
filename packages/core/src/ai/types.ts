@@ -14,7 +14,7 @@ export interface SegmentStat {
   volumeMm3?: number;
 }
 
-/** Where a result set came from — drives provenance badge + export tagging. */
+/** Where a result set came from; drives provenance badge + export tagging. */
 export interface ResultProvenance {
   source: "import" | "inference";
   format?: "orbidicom-json" | "dicom-sr" | "dicom-seg" | "ai-json";

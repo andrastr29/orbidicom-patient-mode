@@ -9,7 +9,7 @@ contribution**.
 git clone https://github.com/orbidicom/orbidicom
 cd orbidicom
 make setup     # pnpm install
-make dev       # demo viewer with hot reload — drag in .dcm files (local mode)
+make dev       # demo viewer with hot reload; drag in .dcm files (local mode)
 ```
 
 ## Before you open a PR
@@ -24,10 +24,10 @@ CI runs these on every PR and is usually green in a few minutes.
 
 ## Where things live
 
-- `packages/core` — engine, `DataSource` interface + adapters, auth, tool/preset registry (pure TS)
-- `packages/vue` — Vue 3 UI
-- `packages/cli` — the `orbidicom` CLI
-- `apps/demo` — the reference viewer
+- `packages/core`: engine, `DataSource` interface + adapters, auth, tool/preset registry (pure TS)
+- `packages/vue`: Vue 3 UI
+- `packages/cli`: the `orbidicom` CLI
+- `apps/demo`: the reference viewer
 
 See [CLAUDE.md](./CLAUDE.md) for an architecture map and "where do I add X?" recipes,
 and [SKILLS.md](./SKILLS.md) for guided recipes (also usable by coding agents).

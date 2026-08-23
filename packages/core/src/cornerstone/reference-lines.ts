@@ -1,5 +1,5 @@
 /**
- * Reference lines — while you scroll one grid cell, the others draw a line where
+ * Reference lines: while you scroll one grid cell, the others draw a line where
  * that slice cuts through them. Scroll an axial series on the left and the
  * coronal on the right shows exactly which level you are looking at.
  *
@@ -7,7 +7,7 @@
  * viewport in the same tool group is a target. Cornerstone draws nothing when:
  *
  * - the two planes are parallel (axial ↔ axial has no meaningful intersection),
- * - or the viewports don't share a frame of reference — the default
+ * - or the viewports don't share a frame of reference. The default
  *   `enforceSameFrameOfReference` is deliberately left on, because a line drawn
  *   across unregistered geometry would be confidently wrong.
  *

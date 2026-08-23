@@ -6,7 +6,7 @@
 #   • Viewer:  http://localhost:8080   (enter a Study Instance UID, or drag files)
 #   • Orthanc: http://localhost:8042   (upload DICOM here; DICOMweb at /dicom-web)
 #
-# DEV ONLY: Orthanc auth is disabled and the image is unpinned for convenience —
+# DEV ONLY: Orthanc auth is disabled and the image is unpinned for convenience;
 # pin a version and enable authentication before using this anywhere real.
 services:
   orthanc:
@@ -18,7 +18,7 @@ services:
       # Enable + mount the DICOMweb plugin at /dicom-web.
       DICOM_WEB_PLUGIN_ENABLED: "true"
       ORTHANC__DICOM_WEB__ROOT: "/dicom-web/"
-      # Dev convenience — no auth, open remote access.
+      # Dev convenience: no auth, open remote access.
       ORTHANC__AUTHENTICATION_ENABLED: "false"
       ORTHANC__REMOTE_ACCESS_ALLOWED: "true"
 
@@ -30,7 +30,7 @@ services:
       - "8080:8080"
     environment:
       # Same-origin: the browser calls /dicom-web on the viewer, nginx forwards
-      # to Orthanc — so no CORS setup is needed.
+      # to Orthanc, so no CORS setup is needed.
       ORBIDICOM_PACS_URL: "/dicom-web"
       ORBIDICOM_PACS_UPSTREAM: "http://orthanc:8042/dicom-web"
     depends_on:

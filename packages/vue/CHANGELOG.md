@@ -6,8 +6,8 @@
 
 - [`ed61f41`](https://github.com/docorbitapp/orbidicom/commit/ed61f415f93c7b5a4d104c88d5c0d297623a58f0) Thanks [@gasci](https://github.com/gasci)! - Tidy the study group header in the mobile series rail.
 
-  On narrow viewports the header was an 84px tile — wider than the 76px series
-  tile it introduces — with its title, count and close button pushed to three
+  On narrow viewports the header was an 84px tile, wider than the 76px series
+  tile it introduces, with its title, count and close button pushed to three
   different edges of a mostly empty box. It is now a 56px gutter: one centred
   block holding the chevron, the study label and the series count, recessed a
   step darker than the rail so it reads as a divider between studies rather than
@@ -42,7 +42,7 @@
     DICOM-JSON and local-file sources from data they already parse.
   - `LocalDataSource` now groups dropped files by `StudyInstanceUID` instead of
     merging everything into one synthetic study, and advertises
-    `multiStudy: true` — so a folder or archive holding a current exam and its
+    `multiStudy: true`: so a folder or archive holding a current exam and its
     prior opens as two study groups offline, with no PACS. Files carrying no
     `StudyInstanceUID` still fall back to the synthetic `"local"` study, and a
     single-study drop is unchanged.
@@ -93,7 +93,7 @@
 - [#15](https://github.com/docorbitapp/orbidicom/pull/15) [`9281738`](https://github.com/docorbitapp/orbidicom/commit/9281738c9e0919cea0367ff84ed6c4eaed388e90) Thanks [@gasci](https://github.com/gasci)! - Fix the series-rail thumbnail spinner appearing frozen (not rotating) on
   iOS/WebKit. The spinner's parent `.rail__thumb` has `overflow: hidden` +
   `border-radius`, and iOS Safari fails to repaint a rotating child under a
-  rounded clip — the ring rendered but sat static. The spinner is now promoted to
+  rounded clip: the ring rendered but sat static. The spinner is now promoted to
   its own compositor layer with `will-change: transform`, which restores the
   rotation. Also removes the `prefers-reduced-motion` guard so the rail spinner
   matches the always-animating viewport spinner. (Follow-up to the 0.11.3 fix,
@@ -127,11 +127,11 @@
   - **Previews silently disabled when a PACS omits the instance count.**
     `NumberOfSeriesRelatedInstances` (0020,1209) is an optional QIDO field, but the
     DICOMweb source collapsed a missing count to `0`, and both preview consumers
-    read `0` as “report — show the document glyph, never fetch”. A server that
+    read `0` as “report, so show the document glyph and never fetch”. A server that
     omits the count therefore showed document glyphs and zero thumbnails for the
     entire rail. The count is now emitted as `undefined` when absent, and the
     document-glyph decision is gated on the series **modality** (SR/DOC/KO/PR/AU)
-    rather than on the count — which also fixes genuine reports that advertise a
+    rather than on the count, which also fixes genuine reports that advertise a
     positive instance count previously rendering the broken “no preview” glyph.
 
 - Updated dependencies [[`09097f2`](https://github.com/docorbitapp/orbidicom/commit/09097f2650d6a0cdea4a927a1f27033ad98d5f97)]:
@@ -152,11 +152,11 @@
 
 - [`772cca7`](https://github.com/docorbitapp/orbidicom/commit/772cca7b5c557e20619b1795fc62da1b25cf352a) Thanks [@gasci](https://github.com/gasci)! - Viewer layout refinements:
 
-  - **Stacked 2×1 grid** — the layout picker now offers a stacked (2×1) two-cell grid
+  - **Stacked 2×1 grid**: the layout picker now offers a stacked (2×1) two-cell grid
     alongside the existing side-by-side (1×2) option.
-  - **Collapsible series rail** — a chevron toggle at the rail edge collapses the rail
+  - **Collapsible series rail**: a chevron toggle at the rail edge collapses the rail
     to give the images more room (works on desktop and the mobile top strip).
-  - **Smaller mobile thumbnails** — the mobile rail's preview tiles are more compact
+  - **Smaller mobile thumbnails**: the mobile rail's preview tiles are more compact
     (64px), freeing space on phones.
 
 - Updated dependencies []:
@@ -195,7 +195,7 @@
   `LocalDataSource` now reads `NumberOfFrames` (0028,0008) and expands each
   multi-frame instance into per-frame wadouri imageIds (`?frame=N`, 1-based),
   matching the DICOMweb path. Previously a multi-frame local file rendered only its
-  first frame and counted as a single image — the remaining frames were silently
+  first frame and counted as a single image, and the remaining frames were silently
   dropped. Its series `numberOfFrames` now sums frames across instances rather than
   counting files.
 
@@ -215,7 +215,7 @@
   OS-styled native `title`. The chip is teleported into the viewer's themed
   container and fixed-positioned (so the toolbar's horizontal scroll can't clip
   it, and it inherits the theme tokens) and displays the action's keyboard shortcut as
-  keycaps. It appears on mouse hover and keyboard focus only — never on touch — and
+  keycaps. It appears on mouse hover and keyboard focus only (never on touch) and
   respects `prefers-reduced-motion`. Labels are mirrored to `aria-label`, so
   icon-only buttons keep an accessible name.
 
@@ -241,7 +241,7 @@
 
 ### Patch Changes
 
-- docs: align CLI README feature table with shipped reality — mark DICOM-SR export (Part-10 + STOW-RS upload) as shipped and correct the DICOM-SEG row to "read-only labelmap rendering (2D stack)".
+- docs: align CLI README feature table with shipped reality: mark DICOM-SR export (Part-10 + STOW-RS upload) as shipped and correct the DICOM-SEG row to "read-only labelmap rendering (2D stack)".
 
 - Updated dependencies []:
   - @orbidicom/core@0.8.1
@@ -288,13 +288,13 @@
     `segmentations` string in all 20 locales.
 
   The data + orchestration layers are unit-tested; the WebGL render itself needs
-  real-browser verification — see `docs/seg-rendering-qa.md`. MPR/volume rendering
+  real-browser verification; see `docs/seg-rendering-qa.md`. MPR/volume rendering
   and brush/threshold editing remain future work.
 
 - [`5ff3ccf`](https://github.com/docorbitapp/orbidicom/commit/5ff3ccf96ddc1943de1a873e2ec9b50aeef8b7b3) Thanks [@gasci](https://github.com/gasci)! - Add DICOM-SR Part-10 encoding + STOW-RS upload. Measurements can now be uploaded
   to a store-capable PACS as a Comprehensive SR.
 
-  - core: `dicomJsonToPart10` — a small, dependency-free Explicit-VR-Little-Endian
+  - core: `dicomJsonToPart10`, a small, dependency-free Explicit-VR-Little-Endian
     Part-10 writer (preamble + generated File Meta Information + dataset, including
     nested sequences) that encodes the DICOM-JSON from `buildMeasurementSr`. Verified
     by round-tripping through `dicom-parser`.
@@ -337,8 +337,8 @@
 
 ### Patch Changes
 
-- Simplify the on-image metadata overlay to two states — **show info** ⇄ **blur
-  patient data** — dropping the third "hidden" mode (the overlay is now always
+- Simplify the on-image metadata overlay to two states, **show info** ⇄ **blur
+  patient data**, dropping the third "hidden" mode (the overlay is now always
   shown, the button just toggles the privacy blur). Fix iOS Safari zooming the page
   when the language-search field is focused (input text is bumped to 16px on touch
   devices). Expand the README docs with verified, copy-pasteable examples (auth
@@ -357,17 +357,17 @@
 
   **Core (`@orbidicom/core`)**
 
-  - **DICOM-SR generation** — `buildMeasurementSr` (`sr/to-json.ts`) turns collected
+  - **DICOM-SR generation**: `buildMeasurementSr` (`sr/to-json.ts`) turns collected
     `Measurement`s into a Comprehensive SR (TID-1500-flavored, DICOM-JSON) with a Measurement
     Group per annotation and a coded NUM item per statistic (SCT/DCM concepts, UCUM units). It
     round-trips through the existing `srTreeFromJson` reader; encoding to Part-10 (dcmjs) for
     STOW-RS upload is the remaining host-side step.
-  - **SEG labelmap assembly** — `buildSegLabelmaps` merges the decoded per-frame SEG masks into one
+  - **SEG labelmap assembly**: `buildSegLabelmaps` merges the decoded per-frame SEG masks into one
     segment-number raster per source image (the render-ready data the WebGL labelmap will consume).
 
   **Vue (`@orbidicom/vue`)**
 
-  - **`<StudyList>` worklist component** — a patient / ID / accession / modality filter form →
+  - **`<StudyList>` worklist component**: a patient / ID / accession / modality filter form →
     results table that emits `open(studyInstanceUID)`, driven by a `DataSource`'s `searchStudies`
     (capability-gated, RTL-aware). Adds nine worklist UI strings across all 20 locales.
   - Exposes the `isRtl` / `dir` i18n helpers from the package entry point.
@@ -385,16 +385,16 @@
 
   **Core (`@orbidicom/core`)**
 
-  - **QIDO-RS worklist** — `DataSource.searchStudies(query?)` returning `StudySummary[]`, with a
+  - **QIDO-RS worklist**: `DataSource.searchStudies(query?)` returning `StudySummary[]`, with a
     `StudyQuery` filter (patient, accession, date, modality, paging). Implemented for DICOMweb
     (`capabilities.studySearch`). PatientName is reduced to its Alphabetic component.
-  - **STOW-RS upload** — `DataSource.storeInstances(files, { studyUid? })` returning a `StoreResult`
+  - **STOW-RS upload**: `DataSource.storeInstances(files, { studyUid? })` returning a `StoreResult`
     (`stored` / `failed`). DICOMweb POSTs a single `multipart/related; type="application/dicom"`
     body and parses the Store-Instances response (`capabilities.store`).
-  - **DICOM-JSON data source** — a new in-memory `DicomJsonDataSource` (registered as the
+  - **DICOM-JSON data source**: a new in-memory `DicomJsonDataSource` (registered as the
     `dicomjson` factory) that serves series + frame-expanded WADO-RS image ids + per-image
     metadata from a DICOM-JSON document, no QIDO/WADO round-trip.
-  - **DICOM-SEG (read-only parsing)** — `core/src/seg/parse.ts`: SOP-class detection, segment
+  - **DICOM-SEG (read-only parsing)**: `core/src/seg/parse.ts`: SOP-class detection, segment
     definitions (labels, property codes, Recommended-Display-CIELab → sRGB color), per-frame →
     segment/source-image mapping, and BINARY-bitstream decode. DICOMweb routes SEG instances out
     of the image stack and exposes them via `listSegmentations` (`capabilities.segmentations`).
@@ -402,9 +402,9 @@
 
   **Vue (`@orbidicom/vue`)**
 
-  - **Five more UI languages** — Arabic (`ar`), Persian (`fa`), Bengali (`bn`), Vietnamese (`vi`),
-    Ukrainian (`uk`) — taking the built-in set to 20.
-  - **Right-to-left support** — `isRtl` / `dir` helpers; `<Viewer>` mirrors its layout via a `dir`
+  - **Five more UI languages**: Arabic (`ar`), Persian (`fa`), Bengali (`bn`), Vietnamese (`vi`),
+    Ukrainian (`uk`), taking the built-in set to 20.
+  - **Right-to-left support**: `isRtl` / `dir` helpers; `<Viewer>` mirrors its layout via a `dir`
     attribute that follows the active language (Arabic, Persian).
   - **Language picker** now opens toward whichever side has more room, so it is no longer clipped
     at the top of the viewport on mobile.
@@ -418,15 +418,15 @@
 
 ### Minor Changes
 
-- [#1](https://github.com/docorbitapp/orbidicom/pull/1) [`c3b0f9f`](https://github.com/docorbitapp/orbidicom/commit/c3b0f9f84faad92f6b5f645299c73bbffaacd04f) Thanks [@gasci](https://github.com/gasci)! - Measurement export and an MPR / volume viewport — the rest of Tier 1.
+- [#1](https://github.com/docorbitapp/orbidicom/pull/1) [`c3b0f9f`](https://github.com/docorbitapp/orbidicom/commit/c3b0f9f84faad92f6b5f645299c73bbffaacd04f) Thanks [@gasci](https://github.com/gasci)! - Measurement export and an MPR / volume viewport: the rest of Tier 1.
 
-  - **Measurement export** — `@orbidicom/core` gains `collectMeasurements` /
+  - **Measurement export**: `@orbidicom/core` gains `collectMeasurements` /
     `measurementsToJson` / `measurementsToCsv` (Length, Angle, ROIs, Probe → normalized
     stats with units and world points). The toolbar exposes JSON and CSV export buttons
     (shown only when measurements exist); files download as `<series>_measurements_<ts>.<ext>`.
     DICOM-SR generation is intentionally deferred (needs a Part-10 writer + STOW-RS upload);
     the exported shape is SR-friendly for a future builder.
-  - **MPR / volume viewport + crosshairs** — `createMprView` builds a 3D volume and shows it
+  - **MPR / volume viewport + crosshairs**: `createMprView` builds a 3D volume and shows it
     in three linked orthographic panes (axial / coronal / sagittal) with a `CrosshairsTool`.
     The layout selector gains an **MPR** entry for volume-capable series (multi-slice CT / MR /
     PT / NM); the stack grid stays mounted (hidden) so switching back is instant. `isVolumeCapable`
@@ -436,18 +436,18 @@
 
 - [#1](https://github.com/docorbitapp/orbidicom/pull/1) [`c3b0f9f`](https://github.com/docorbitapp/orbidicom/commit/c3b0f9f84faad92f6b5f645299c73bbffaacd04f) Thanks [@gasci](https://github.com/gasci)! - Five more UI languages and a searchable language switcher.
 
-  - **15 built-in languages** — adds Korean (`ko`), Hindi (`hi`), Indonesian (`id`), Dutch
+  - **15 built-in languages**: adds Korean (`ko`), Hindi (`hi`), Indonesian (`id`), Dutch
     (`nl`), and Polish (`pl`) to the existing ten, all with the full key set (the runtime
     key-parity test guards against gaps).
-  - **Searchable `LangSwitcher`** — the native `<select>` is replaced by an accessible combobox:
+  - **Searchable `LangSwitcher`**: the native `<select>` is replaced by an accessible combobox:
     a trigger showing the active language opens a popover with a type-to-filter search
     (diacritic-insensitive, matches the localized name, the endonym, and the locale code),
     keyboard navigation, and click-outside / Escape to dismiss.
-  - **Localized language names** — each language is labeled in the active UI language via
+  - **Localized language names**: each language is labeled in the active UI language via
     `Intl.DisplayNames` (a new `localeName` helper), so with Turkish active "Korean" shows as
     "Korece"; each row keeps the language's own endonym ("한국어") as a secondary hint so a
     misclick into an unfamiliar UI language is still recoverable.
-  - Right-to-left scripts (Arabic, Hebrew) are intentionally a follow-up — they need UI
+  - Right-to-left scripts (Arabic, Hebrew) are intentionally a follow-up; they need UI
     mirroring beyond a string table.
 
 - [#1](https://github.com/docorbitapp/orbidicom/pull/1) [`c3b0f9f`](https://github.com/docorbitapp/orbidicom/commit/c3b0f9f84faad92f6b5f645299c73bbffaacd04f) Thanks [@gasci](https://github.com/gasci)! - Download the active slice as a JPEG (image + measurements).
@@ -457,52 +457,52 @@
     metadata overlay is a separate DOM layer and is never burned in. Returns `null` for
     report/SR/PDF cells (nothing to capture).
   - `@orbidicom/vue`: a toolbar **Download image as JPEG** button (shown only when the active
-    cell holds an image stack) saves `<series>_<slice>.jpg` — image plus any length/angle/ROI
+    cell holds an image stack) saves `<series>_<slice>.jpg`: image plus any length/angle/ROI
     measurements, no patient text. Localized in all 10 languages.
 
-- [#1](https://github.com/docorbitapp/orbidicom/pull/1) [`c3b0f9f`](https://github.com/docorbitapp/orbidicom/commit/c3b0f9f84faad92f6b5f645299c73bbffaacd04f) Thanks [@gasci](https://github.com/gasci)! - 3D volume rendering (VR) in the MPR view — an OHIF-style hanging protocol.
+- [#1](https://github.com/docorbitapp/orbidicom/pull/1) [`c3b0f9f`](https://github.com/docorbitapp/orbidicom/commit/c3b0f9f84faad92f6b5f645299c73bbffaacd04f) Thanks [@gasci](https://github.com/gasci)! - 3D volume rendering (VR) in the MPR view: an OHIF-style hanging protocol.
 
-  - **`@orbidicom/core`** — `createMprView` now builds a four-up reconstruction: the three
+  - **`@orbidicom/core`**: `createMprView` now builds a four-up reconstruction: the three
     orthographic planes (axial / coronal / sagittal, crosshairs) plus a **3D volume-rendering
     pane** on a `VOLUME_3D` viewport with `TrackballRotate`. New exports `VR_PRESETS` (a curated
-    set of Cornerstone transfer-function presets — CT-Bone, CT-Soft-Tissue, CT-Lung, CT-Muscle,
+    set of Cornerstone transfer-function presets: CT-Bone, CT-Soft-Tissue, CT-Lung, CT-Muscle,
     CT-Cardiac, CT-MIP, MR-Default, MR-Angio, MR-MIP) and `defaultVrPreset(modality)`. The handle
     gains `setPreset(name)`; `setVolume` takes an optional `{ modality }` to light the 3D pane with
     a sensible default. The 3D pane and the orthographic planes use separate per-instance tool
     groups, both torn down (and the shared volume evicted) on `destroy`.
-  - **`@orbidicom/vue`** — the MPR layout renders as a 2×2 grid with the 3D pane and a floating
+  - **`@orbidicom/vue`**: the MPR layout renders as a 2×2 grid with the 3D pane and a floating
     rendering-preset picker; the layout option reads "MPR / 3D". The option is now always listed
     in the layout dropdown but **disabled with an explanatory tooltip** when the active series
     isn't volume-capable (instead of being hidden), so the capability is discoverable.
-  - **NIfTI is now MPR / 3D-eligible** — `SeriesSummary` gains an optional `volumetric` flag, set
+  - **NIfTI is now MPR / 3D-eligible**: `SeriesSummary` gains an optional `volumetric` flag, set
     by `NiftiDataSource`, and `isVolumeCapable` honors it. NIfTI volumes carry no DICOM modality,
     so they were previously excluded from reconstruction; they now build through the same
     streaming-volume path (the default VR preset falls back to CT-Bone).
   - Rendering, crosshair reslice, and VR correctness require a real WebGL browser and a true
-    volumetric series — unit tests cover wiring, preset/tool plumbing, and the `isVolumeCapable`
+    volumetric series; unit tests cover wiring, preset/tool plumbing, and the `isVolumeCapable`
     gate only. A real-browser QA pass is still needed before release.
 
 - [#1](https://github.com/docorbitapp/orbidicom/pull/1) [`c3b0f9f`](https://github.com/docorbitapp/orbidicom/commit/c3b0f9f84faad92f6b5f645299c73bbffaacd04f) Thanks [@gasci](https://github.com/gasci)! - Keyboard shortcuts, a modality-aware window-level preset engine, and six more UI languages.
 
-  - **Keyboard shortcuts** — a framework-agnostic keymap (`DEFAULT_KEYMAP`, `resolveHotkey`) in
+  - **Keyboard shortcuts**: a framework-agnostic keymap (`DEFAULT_KEYMAP`, `resolveHotkey`) in
     `@orbidicom/core`, wired into `<Viewer>`: letter keys select tools, `i`/`r`/`f`/`0` run view
     transforms, space toggles cine, arrows page slices, and digits `1`–`9` apply window presets.
     Bindings are shown in the toolbar tooltips and can be overridden via the new `keymap` prop.
-  - **W/L preset engine** — `windowPresetsFor` is no longer CT-only. CT still ships its five
+  - **W/L preset engine**: `windowPresetsFor` is no longer CT-only. CT still ships its five
     standard windows, but a host can register protocol windows for **any** modality via
     `registerWindowPreset` (matched case-insensitively) and they surface in the toolbar.
-  - **More languages** — the UI now ships **10 locales** (added Français, Italiano, Português,
+  - **More languages**: the UI now ships **10 locales** (added Français, Italiano, Português,
     Русский, 中文, 日本語 alongside English, Türkçe, Deutsch, Español), with the live switcher
     and English fallback for any missing key.
 
 - [#2](https://github.com/docorbitapp/orbidicom/pull/2) [`eaee06d`](https://github.com/docorbitapp/orbidicom/commit/eaee06d3566c48204b78dd52488a43b8ab3ccb1d) Thanks [@gasci](https://github.com/gasci)! - Tier 2: a Plugin SDK and lightweight hanging protocols.
 
-  - **Plugin SDK (`@orbidicom/core`)** — `registerPlugin({ name, tools, windowPresets, dataSources })`
+  - **Plugin SDK (`@orbidicom/core`)**: `registerPlugin({ name, tools, windowPresets, dataSources })`
     fans a plugin's contributions out to the core registries the UI already reads from;
     `listPlugins()` enumerates what's registered (idempotent by name). Adds a **data-source factory
     registry**: `registerDataSource`, `listDataSources`, and `createDataSource(id, config)` to build
-    a backend by id — with the built-in adapters (`dicomweb`, `local`, `nifti`) pre-registered.
-  - **Hanging protocols (`@orbidicom/core` + `@orbidicom/vue`)** — `applyHangingProtocol(series,
+    a backend by id, with the built-in adapters (`dicomweb`, `local`, `nifti`) pre-registered.
+  - **Hanging protocols (`@orbidicom/core` + `@orbidicom/vue`)**: `applyHangingProtocol(series,
 protocol, { maxCells })` maps a study's series onto the grid; built-ins `single` (default) and
     `grid` (tile image series, reports excluded, into the smallest fitting layout), plus custom
     functions. `<Viewer>` gains a `hanging-protocol` prop applied once the study loads; the default
@@ -533,7 +533,7 @@ protocol, { maxCells })` maps a study's series onto the grid; built-ins `single`
 
 ### Minor Changes
 
-- Render DICOM Structured Reports (SR). SR series are no longer filtered out — they're
+- Render DICOM Structured Reports (SR). SR series are no longer filtered out; they're
   parsed into a normalized `SrTree` and shown as a readable, indented document. The
   `DataSource` interface gains a generalized report surface (`listReports`,
   `getStructuredReport`, `ReportInstance`, `capabilities.reports`) alongside the

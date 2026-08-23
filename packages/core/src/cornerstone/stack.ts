@@ -22,21 +22,21 @@ let seq = 0;
 // EAGERLY allocates a pool of `webGlContextCount` (=7 by default) WebGL contexts
 // PER engine, so a fresh engine per grid cell burned ~7 contexts each. A 2×2 grid
 // then demanded ~28 contexts and blew past the browser's ~16-context ceiling; the
-// browser discards the OLDEST context, so the first-loaded cell went black — and
+// browser discards the OLDEST context, so the first-loaded cell went black, and
 // stayed black, since there is no context-restore path and reselecting a series
 // reuses the same dead engine. One shared engine keeps every cell's viewport in a
 // single bounded 7-context pool (the pool spreads viewports across its contexts),
 // exactly how createMprView already drives its four panes from one engine.
 /**
  * Id of that one shared engine. Exported because anything that has to name a
- * stack viewport to Cornerstone — scroll synchronizers, reference lines — needs
+ * stack viewport to Cornerstone (scroll synchronizers, reference lines) needs
  * the `{ renderingEngineId, viewportId }` pair, and this is the engine half.
  */
 export const STACK_ENGINE_ID = "orbidicom-stack-engine";
 const SHARED_ENGINE_ID = STACK_ENGINE_ID;
 let sharedEngine: RenderingEngine | null = null;
 // Live viewports on the shared engine, so it is torn down only once the last cell
-// (or the thumbnailer) is gone — and lazily rebuilt on the next createStack.
+// (or the thumbnailer) is gone, and lazily rebuilt on the next createStack.
 let liveViewports = 0;
 
 function acquireEngine(): RenderingEngine {
@@ -118,7 +118,7 @@ export interface StackHandle {
   /**
    * The live Cornerstone stack viewport for this cell. Used by the UI overlay to
    * project annotation world coordinates to canvas pixels (worldToCanvas) and to
-   * read the current image id. Read-only use — do not mutate state through it.
+   * read the current image id. Read-only use: do not mutate state through it.
    */
   getViewport: () => Types.IStackViewport;
   /**
@@ -134,7 +134,7 @@ export interface StackHandle {
    * (that's a separate DOM layer outside the viewport canvas/SVG). Resolves to the
    * Blob; the caller triggers the download. Resolves null if the viewport is
    * destroyed or has no rendered image canvas (e.g. report/SR/PDF cells).
-   * @param quality JPEG quality 0..1 (default 0.95 — visually lossless).
+   * @param quality JPEG quality 0..1 (default 0.95, visually lossless).
    */
   captureSliceJpeg: (quality?: number) => Promise<Blob | null>;
   destroy: () => void;
@@ -172,7 +172,7 @@ export function createStack(
   let count = 0;
   let cineOn = false;
   let destroyed = false;
-  // Track view transforms locally — reading them back from the viewport is
+  // Track view transforms locally, because reading them back from the viewport is
   // unreliable, which made rotate not advance and flip not toggle.
   let rotation = 0;
   let flippedH = false;
@@ -201,7 +201,7 @@ export function createStack(
     const index = typeof idx === "number" ? idx : (vp.getCurrentImageIdIndex?.() ?? 0);
     cb.onSlice?.({ index, count });
     // Warm outward from where the user actually is, not from where the series
-    // was opened — otherwise scrolling ahead of the warm region stays slow.
+    // was opened; otherwise scrolling ahead of the warm region stays slow.
     prefetcher?.recenter(index);
   };
   const onVoiModified = (e: Event) => {
@@ -238,7 +238,7 @@ export function createStack(
   eventTarget.addEventListener(Enums.Events.IMAGE_CACHE_IMAGE_ADDED, onCacheAdded as EventListener);
 
   // Redraw the annotation SVG overlay for this viewport. The annotation *state*
-  // is global (and may have been mutated elsewhere — undo/redo, clear); the
+  // is global (and may have been mutated elsewhere by undo/redo or clear); the
   // drawn overlay only updates when a render is triggered for this element.
   const refreshAnnotationOverlay = () => {
     csToolsUtils.triggerAnnotationRenderForViewportIds([viewportId]);
@@ -276,7 +276,7 @@ export function createStack(
       //
       // NOT cornerstone's stackPrefetch: it re-centers by clearing the entire
       // GLOBAL prefetch pool, which would wipe every other grid cell's queued
-      // frames — and an idle cell only re-queues on its own slice change, so it
+      // frames, and an idle cell only re-queues on its own slice change, so it
       // would never recover. See ./prefetch.
       prefetcher?.destroy();
       prefetcher = createPrefetcher(imageIds);
@@ -335,7 +335,7 @@ export function createStack(
     clearAnnotations() {
       if (destroyed) return;
       annotation.state.removeAllAnnotations();
-      // removeAllAnnotations() only clears state — the drawn measurements stay on
+      // removeAllAnnotations() only clears state; the drawn measurements stay on
       // the SVG overlay until an annotation render is triggered for this element.
       refreshAnnotationOverlay();
     },

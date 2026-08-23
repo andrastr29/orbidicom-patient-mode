@@ -88,7 +88,7 @@ async function readEntry(entry: FileSystemEntry): Promise<File[]> {
 
 /** Expand a .zip into File objects, bounded by MAX_UNZIP_BYTES of decompressed
  *  output (entries past the budget, directory entries, and unsupported codecs
- *  are skipped — fflate throws if a filtered-in entry isn't stored/deflate). */
+ *  are skipped, because fflate throws if a filtered-in entry isn't stored/deflate). */
 function unzipToFiles(zip: File): Promise<{ files: File[]; truncated: boolean }> {
   return zip.arrayBuffer().then(
     (buf) =>
@@ -181,7 +181,7 @@ async function onDrop(e: DragEvent) {
   dragging.value = false;
   if (busy.value) return;
   const items = e.dataTransfer?.items;
-  // webkitGetAsEntry() must run synchronously, before any await — the
+  // webkitGetAsEntry() must run synchronously, before any await, because the
   // DataTransferItemList is emptied once the drop handler yields.
   if (items && items.length && typeof items[0]?.webkitGetAsEntry === "function") {
     const entries = Array.from(items)

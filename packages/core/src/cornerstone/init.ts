@@ -48,8 +48,8 @@ const DEFAULT_BEFORE_SEND = (headers: Record<string, string>): Record<string, st
 export interface InitOptions {
   /**
    * Frame-decode worker count. Defaults to most of the device's cores
-   * (`max(2, hardwareConcurrency - 1)`). The library's own default —
-   * `floor(hardwareConcurrency / 2)` — is often 1–2 on a phone and serializes
+   * (`max(2, hardwareConcurrency - 1)`). The library's own default,
+   * `floor(hardwareConcurrency / 2)`, is often 1–2 on a phone and serializes
    * WASM codec decoding, making large/compressed series crawl. Client-side CPU
    * only; adds no extra PACS load (still one frame per displayed slice).
    */
@@ -109,17 +109,17 @@ export function probeTextLines(
  * Per-tool configuration applied when a tool joins the stack tool group. Tools
  * absent from the map join with their library defaults.
  *
- * - **Zoom** — `pinchToZoom:false` makes Zoom's touchDragCallback the plain
+ * - **Zoom**: `pinchToZoom:false` makes Zoom's touchDragCallback the plain
  *   vertical-drag zoom (same as the mouse), so a single finger zooms when Zoom is
  *   the active tool, matching every other one-finger tool. The default
  *   (`pinchToZoom:true`) only zooms on a two-finger pinch and ignores
  *   single-touch drags entirely.
- * - **CircleROI** — `calculateStats:false` turns the ROI into a plain circle
+ * - **CircleROI**: `calculateStats:false` turns the ROI into a plain circle
  *   *annotation*: the tool skips the statistics pass AND the linked measurement
- *   text box, drawing only the outline. That is the whole point of shipping it —
+ *   text box, drawing only the outline. That is the whole point of shipping it:
  *   EllipticalROI already covers "circle with numbers", so this is the
  *   draw-a-circle-and-say-nothing tool. See SHAPE_TOOLS in ./tool-names.
- * - **Probe** — `getTextLines` drops the voxel-index line; see {@link probeTextLines}.
+ * - **Probe**: `getTextLines` drops the voxel-index line; see {@link probeTextLines}.
  */
 const TOOL_CONFIG: Record<string, Record<string, unknown>> = {
   [ZoomTool.toolName]: { pinchToZoom: false },
@@ -133,7 +133,7 @@ export async function initCornerstone(opts: InitOptions = {}): Promise<void> {
   const beforeSend = opts.beforeSend ?? DEFAULT_BEFORE_SEND;
   dicomImageLoaderInit({
     // `globalThis.navigator?.` (not bare `navigator`): navigator is a browser
-    // global and only became a Node global in v21 — bare access throws
+    // global and only became a Node global in v21, so bare access throws
     // ReferenceError under Node 20 (CI / SSR). Optional chaining falls back to 4.
     maxWebWorkers:
       opts.maxWebWorkers ?? Math.max(2, (globalThis.navigator?.hardwareConcurrency || 4) - 1),
@@ -142,7 +142,7 @@ export async function initCornerstone(opts: InitOptions = {}): Promise<void> {
     // Use the classic file-parsing loaders for wadouri/dicomfile + the
     // metaDataManager-based wadors provider. cornerstone 5.x otherwise defaults
     // to a metadata-first loader that needs naturalized metadata pre-populated,
-    // which local .dcm files (dicomfile:) don't have — so it can't find pixel
+    // which local .dcm files (dicomfile:) don't have, so it can't find pixel
     // data ("no COMPRESSED_FRAME_DATA"). This also matches how our data sources
     // register metadata (DicomWebDataSource uses wadors.metaDataManager.add).
     useLegacyMetadataProvider: true,
@@ -161,7 +161,7 @@ export async function initCornerstone(opts: InitOptions = {}): Promise<void> {
   addTool(CrosshairsTool);
   addTool(TrackballRotateTool);
   // ReferenceLinesTool joins the stack group (below) but stays Disabled until the
-  // UI names a source viewport — see cornerstone/reference-lines.ts.
+  // UI names a source viewport; see cornerstone/reference-lines.ts.
   addTool(ReferenceLinesTool);
 
   const tg = ToolGroupManager.createToolGroup(TOOL_GROUP_ID)!;
@@ -199,7 +199,7 @@ export const TOOLS = {
   Angle: AngleTool.toolName,
   Rectangle: RectangleROITool.toolName,
   Ellipse: EllipticalROITool.toolName,
-  /** A plain circle with no measurements — see TOOL_CONFIG above. */
+  /** A plain circle with no measurements; see TOOL_CONFIG above. */
   Circle: CircleROITool.toolName,
   Probe: ProbeTool.toolName,
 } as const;

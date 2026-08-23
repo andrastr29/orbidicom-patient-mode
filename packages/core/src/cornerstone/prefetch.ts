@@ -7,7 +7,7 @@ const REQUEST_TYPE = Enums.RequestType.Prefetch;
  *
  * This is the crux of the design. Cornerstone's own stackPrefetch dumps the
  * ENTIRE series into the pool up front, so scrolling mid-warm-up had to wait out
- * a queue of hundreds of now-stale frames before the newly-nearest ones ran —
+ * a queue of hundreds of now-stale frames before the newly-nearest ones ran:
  * jump to slice 300 of 400 and the pool kept grinding through 40, 41, 42. A
  * queue this short drains in about one round-trip, so a slice change re-centers
  * almost immediately. Twice the Prefetch concurrency set in init.ts: enough to
@@ -31,7 +31,7 @@ const NOOP: Prefetcher = { recenter() {}, destroy() {} };
  * always fetching the frames nearest the current slice first.
  *
  * One per stack viewport. Every viewport shares the one global request pool, so
- * this only ever touches its OWN requests in it — a neighbouring grid cell's
+ * this only ever touches its OWN requests in it, because a neighbouring grid cell's
  * queued frames must survive our re-centering, or scrolling one cell would
  * silently stall the warm-up of the others.
  */
@@ -112,14 +112,14 @@ export function createPrefetcher(imageIds: string[]): Prefetcher {
     if (destroyed) return;
     // Reclaim what we queued but that has not started, so it can be re-sorted
     // around the new cursor. The pool shift()s a request out of the queue before
-    // running it, so anything still IN the pool has not begun — which makes this
+    // running it, so anything still IN the pool has not begun, which makes this
     // callback an exact list of what is safe to take back. In-flight frames are
     // not cancellable and simply run to completion.
     imageLoadPoolManager.filterRequests((req) => {
       if (req.type !== REQUEST_TYPE) return true;
       const id = req.additionalDetails?.imageId;
       const i = id === undefined ? undefined : indexOf.get(id);
-      if (i === undefined || !active.has(i)) return true; // not ours — leave it alone
+      if (i === undefined || !active.has(i)) return true; // not ours, so leave it alone
       active.delete(i);
       pending.add(i);
       return false;
@@ -135,7 +135,7 @@ export function createPrefetcher(imageIds: string[]): Prefetcher {
     const id = (e as CustomEvent).detail?.imageId as string | undefined;
     const i = id === undefined ? undefined : indexOf.get(id);
     if (i === undefined || active.has(i) || pending.has(i)) return;
-    // Evicted under cache pressure — we still want it, so put it back in line.
+    // Evicted under cache pressure, and we still want it, so put it back in line.
     pending.add(i);
     orderDirty = true;
     pump();

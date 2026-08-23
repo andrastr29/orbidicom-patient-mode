@@ -20,7 +20,7 @@ STUDY_UID="$(sanitize "$STUDY_UID")"
 
 # PACS auth. ORBIDICOM_AUTH_KIND ∈ none|cookie|bearer|basic (default none →
 # same-origin; cookies are still sent for same-origin requests). SECURITY: bearer/
-# basic credentials are written into the client-readable config.js — only use them
+# basic credentials are written into the client-readable config.js, so only use them
 # on trusted/internal deployments.
 AUTH_KIND="${ORBIDICOM_AUTH_KIND:-}"
 AUTH_TOKEN="$(sanitize "${ORBIDICOM_AUTH_TOKEN:-}")"

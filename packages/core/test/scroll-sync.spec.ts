@@ -51,7 +51,7 @@ describe("createScrollSync", () => {
     expect(s.getViewports()).toEqual(["a", "b", "c"]);
   });
 
-  it("diffs against the live set — repeating it is a no-op", () => {
+  it("diffs against the live set, so repeating it is a no-op", () => {
     const s = createScrollSync();
     s.setViewports(["a", "b"]);
     h.sync.add.mockClear();

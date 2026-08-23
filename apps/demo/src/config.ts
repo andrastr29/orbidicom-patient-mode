@@ -19,7 +19,7 @@ export interface RuntimeConfig {
    * PACS auth strategy. Omitted → same-origin (no Authorization header; the
    * browser still sends same-origin cookies). Use "cookie" for cross-origin
    * session cookies. SECURITY: "basic"/"bearer" embed the credential in this
-   * client-readable config — only for trusted/internal deployments.
+   * client-readable config, so only for trusted/internal deployments.
    */
   auth?: AuthStrategy;
   /** Optional per-deployment feature toggles. */
@@ -35,7 +35,7 @@ declare global {
 /**
  * Merge URL query params over a base config. `?pacs=` and `?study=` win when
  * present and non-empty, so a single static bundle (or `npx orbidicom`) can be
- * pointed at any PACS/study without rebuilding or editing config.js — e.g.
+ * pointed at any PACS/study without rebuilding or editing config.js, e.g.
  * `…/?pacs=/dicom-web&study=1.2.840…`. Pure (no DOM) so it is unit-testable.
  */
 export function mergeConfig(base: RuntimeConfig, search: string): RuntimeConfig {
@@ -44,7 +44,7 @@ export function mergeConfig(base: RuntimeConfig, search: string): RuntimeConfig 
     const v = params.get(key);
     return v != null && v.trim() !== "" ? v.trim() : (fallback ?? "").trim();
   };
-  // Auth comes from the base config ONLY — never a query param — so a crafted
+  // Auth comes from the base config ONLY (never a query param), so a crafted
   // link can't inject or downgrade credentials.
   const aiParam = params.get("ai");
   const aiResults =

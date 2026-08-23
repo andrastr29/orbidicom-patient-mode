@@ -37,7 +37,7 @@ const lengthAnn = (uid: string): HistoryAnnotation => ({
  * map of UID -> annotation, where `removeAnnotation` synchronously re-fires the
  * REMOVED notification (as Cornerstone's eventTarget does) by calling the
  * controller's recordDelete. `addAnnotation` fires ANNOTATION_ADDED, which the
- * history does NOT listen to, so it records nothing — matching reality.
+ * history does NOT listen to, so it records nothing, matching reality.
  */
 function makeFake() {
   const store = new Map<string, HistoryAnnotation>();
@@ -246,7 +246,7 @@ describe("createAnnotationHistory", () => {
     expect(history.canRedo()).toBe(true); // the edit moved to redo, nothing spurious
   });
 
-  it("beginEdit is idempotent within a gesture — keeps the gesture-start snapshot", () => {
+  it("beginEdit is idempotent within a gesture: it keeps the gesture-start snapshot", () => {
     const { history, store } = setup();
     store.set("u1", lengthAnn("u1")); // points [[0,0,0]]
     history.recordCreate("u1", "FOR1");
@@ -271,7 +271,7 @@ describe("createAnnotationHistory", () => {
     history.undo(); // u2 create -> redo stack
     expect(history.canRedo()).toBe(true);
 
-    // Edit u1 (which has a stable baseline) — this new action must invalidate redo.
+    // Edit u1 (which has a stable baseline); this new action must invalidate redo.
     history.beginEdit("u1");
     store.get("u1")!.data = { handles: { points: [[7, 7, 7]] } };
     history.commitEdit("u1");
@@ -328,7 +328,7 @@ describe("createAnnotationHistory", () => {
     history.noteModified(fake.store.get("u1")!); // arms idle timer, captures before=[[0,0,0]]
     fake.store.get("u1")!.data = { handles: { points: [[5, 5, 5]] } };
 
-    history.undo(); // undo the create (removes u1) — must cancel the armed timer
+    history.undo(); // undo the create (removes u1); must cancel the armed timer
     history.redo(); // redo re-adds u1
     sched.flush(); // the cancelled timer must NOT fire commitEdit
 
@@ -351,7 +351,7 @@ describe("createAnnotationHistory", () => {
 
     history.recordCreate("u1", "FOR1"); // draw completes
 
-    // Stack is exactly [create] — no orphan edit beneath it.
+    // Stack is exactly [create], with no orphan edit beneath it.
     expect(history.undo()).toBe(true);
     expect(fake.store.has("u1")).toBe(false);
     expect(history.canUndo()).toBe(false);

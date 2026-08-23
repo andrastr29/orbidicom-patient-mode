@@ -7,7 +7,7 @@
  * representation to the viewport, and applies each segment's display color.
  *
  * The pure alignment lives in `seg/align.ts` (unit-tested); this module is the
- * Cornerstone integration — it requires a live WebGL viewport, so the actual
+ * Cornerstone integration: it requires a live WebGL viewport, so the actual
  * rendering must be verified in a browser (see docs). Read-only (no editing).
  */
 import { segmentation, Enums as csToolsEnums } from "@cornerstonejs/tools";
@@ -87,7 +87,7 @@ export function removeSegmentationFromViewport(viewportId: string, segmentationI
 }
 
 /**
- * Fully remove a segmentation from global state — its state entry AND all of its
+ * Fully remove a segmentation from global state: its state entry AND all of its
  * viewport representations (unlike {@link removeSegmentationFromViewport}, which
  * only strips a single viewport's representation and leaves the global entry, so
  * re-adding the same `segmentationId` would throw "already exists").

@@ -1,5 +1,5 @@
 /**
- * Synchronized scrolling across grid cells — scroll one viewport, the others
+ * Synchronized scrolling across grid cells: scroll one viewport, the others
  * follow to the same anatomical level.
  *
  * The sync is **position-based, not index-based**: Cornerstone's image-slice
@@ -9,7 +9,7 @@
  * apart, and a series that shares no frame of reference with the source is
  * registered on the fly (`calculateViewportsSpatialRegistration`).
  *
- * Only coplanar viewports participate — the synchronizer itself skips a target
+ * Only coplanar viewports participate; the synchronizer itself skips a target
  * whose plane differs from the source's (axial ↔ sagittal simply does nothing,
  * which is the honest answer: there is no matching slice to jump to).
  *
@@ -56,7 +56,7 @@ export function createScrollSync(renderingEngineId: string = STACK_ENGINE_ID): S
     try {
       sync?.remove({ renderingEngineId, viewportId });
     } catch {
-      /* viewport already gone with its engine — nothing left to detach */
+      /* viewport already gone with its engine, so nothing left to detach */
     }
   };
 
@@ -88,7 +88,7 @@ export function createScrollSync(renderingEngineId: string = STACK_ENGINE_ID): S
       members.clear();
       if (!sync) return;
       sync = null;
-      // destroySynchronizer (not synchronizer.destroy) — it also drops the entry
+      // destroySynchronizer (not synchronizer.destroy) also drops the entry
       // from Cornerstone's global registry, which is what frees the id.
       try {
         SynchronizerManager.destroySynchronizer(synchronizerId);

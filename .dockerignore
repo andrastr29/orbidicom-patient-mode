@@ -1,4 +1,4 @@
-# Build artifacts and deps — re-created inside the image.
+# Build artifacts and deps, re-created inside the image.
 **/node_modules
 **/dist
 **/.turbo

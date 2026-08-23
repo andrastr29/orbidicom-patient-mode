@@ -1,5 +1,5 @@
 /**
- * DICOM-SEG (Segmentation Storage) parsing — the framework-agnostic core of
+ * DICOM-SEG (Segmentation Storage) parsing: the framework-agnostic core of
  * read-only segmentation support. Turns a SEG instance's DICOM-JSON metadata into
  * normalized segment definitions (labels, codes, display colors) and a per-frame
  * map of which segment each frame paints over which source image, plus a decoder
@@ -177,7 +177,7 @@ export function cielabToRgb(lab: [number, number, number]): [number, number, num
 /**
  * Decode a BINARY-type SEG's packed pixel data into one 0/1 mask per frame. The
  * bitstream is LSB-first and continuous across frames (frame boundaries are not
- * byte-aligned), per PS3.5 — so frame `f`, pixel `p` lives at bit `f*rows*cols+p`.
+ * byte-aligned), per PS3.5, so frame `f`, pixel `p` lives at bit `f*rows*cols+p`.
  */
 export function unpackBinarySegmentationFrames(
   bytes: Uint8Array,

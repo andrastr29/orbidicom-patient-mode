@@ -1,5 +1,5 @@
 /**
- * MPR / volume reconstruction — builds a 3D volume from a series' image ids and
+ * MPR / volume reconstruction: builds a 3D volume from a series' image ids and
  * shows it in a four-up hanging protocol: three linked orthographic planes
  * (axial / coronal / sagittal) with a crosshairs tool, plus a 3D volume-rendering
  * (VR) pane with selectable presets (CT-Bone, CT-Soft-Tissue, …), the same layout
@@ -7,7 +7,7 @@
  * per-instance tool groups so it never collides with the stack viewer.
  *
  * Rendering and crosshair/VR correctness require a real WebGL browser + a true
- * volumetric series — they can't be exercised in jsdom. Unit tests cover wiring,
+ * volumetric series, so they can't be exercised in jsdom. Unit tests cover wiring,
  * the preset/tool plumbing, and the `isVolumeCapable` gate only.
  */
 import {
@@ -36,7 +36,7 @@ export type MprPane = "axial" | "coronal" | "sagittal" | "volume3d";
 
 /**
  * Volume-rendering presets offered in the 3D pane. A curated, radiology-relevant
- * subset of Cornerstone's built-in `CONSTANTS.VIEWPORT_PRESETS` — every name here
+ * subset of Cornerstone's built-in `CONSTANTS.VIEWPORT_PRESETS`; every name here
  * exists there, so `setProperties({ preset })` always resolves.
  */
 export const VR_PRESETS = [
@@ -86,7 +86,7 @@ const VOLUME_MODALITIES = new Set(["CT", "MR", "PT", "NM"]);
  * Whether a series is worth (and likely able to be) reconstructed in 3D: a
  * multi-slice cross-sectional volume. This is a cheap pre-gate on modality +
  * slice count; true geometry validation (consistent frame of reference, regular
- * spacing) only happens at load time — see the runtime guard in `createMprView`.
+ * spacing) only happens at load time; see the runtime guard in `createMprView`.
  */
 export function isVolumeCapable(
   series: Pick<SeriesSummary, "modality" | "volumetric">,
@@ -213,7 +213,7 @@ export function createMprView(
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const vol = (await volumeLoader.createAndCacheVolume(volumeId, { imageIds })) as any;
-        // The volume is cached now, so mark it built BEFORE the teardown check —
+        // The volume is cached now, so mark it built BEFORE the teardown check,
         // otherwise a destroy() that raced the await would skip cache eviction and
         // leak the (large) volume. If we already tore down, evict it right here.
         volumeBuilt = true;
@@ -228,7 +228,7 @@ export function createMprView(
         vol?.load?.(); // progressive streaming load
         // Re-check before the next await: a destroy() that raced this point has
         // already evicted the volume (volumeBuilt was set above), and the engine's
-        // viewports are gone — calling setVolumesForViewports would throw.
+        // viewports are gone, so calling setVolumesForViewports would throw.
         if (destroyed) return;
         await setVolumesForViewports(engine, [{ volumeId }], allIds);
         if (destroyed) return;
@@ -263,7 +263,7 @@ export function createMprView(
         vp?.resetProperties?.();
         vp?.resetCamera?.();
       }
-      // resetProperties on the 3D pane would clear the active preset — reset the
+      // resetProperties on the 3D pane would clear the active preset, so reset the
       // camera only, then re-assert the current preset.
       const vr = vpOf("volume3d");
       vr?.resetCamera?.();

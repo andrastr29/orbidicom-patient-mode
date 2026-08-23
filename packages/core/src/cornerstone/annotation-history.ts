@@ -1,5 +1,5 @@
 /**
- * Annotation undo / redo — a framework-agnostic history of the user's annotation
+ * Annotation undo / redo: a framework-agnostic history of the user's annotation
  * actions. Scope: **create** (a measurement was drawn) and **delete** (a
  * measurement was removed). Moving/resizing an existing annotation is *not* a
  * tracked step, but such edits survive an undo→redo round trip because undoing a
@@ -14,7 +14,7 @@ import { annotation, Enums as csToolsEnums } from "@cornerstonejs/tools";
 import { eventTarget } from "@cornerstonejs/core";
 import { ANNOTATION_TOOLS } from "./tool-names";
 
-/** The drawing tools whose create/delete we track — measurements and plain shapes alike. */
+/** The drawing tools whose create/delete we track: measurements and plain shapes alike. */
 const KNOWN_TOOLS = new Set<string>(ANNOTATION_TOOLS);
 
 /** Minimal shape we read from a Cornerstone annotation (cloned opaquely otherwise). */
@@ -77,7 +77,7 @@ export interface AnnotationHistoryOptions {
 const clone = <T>(v: T): T =>
   typeof structuredClone === "function" ? structuredClone(v) : (JSON.parse(JSON.stringify(v)) as T);
 
-/** Serialized geometry (handles) of an annotation — the signal that an edit changed it. */
+/** Serialized geometry (handles) of an annotation: the signal that an edit changed it. */
 const handlesKey = (a: HistoryAnnotation | undefined): string =>
   JSON.stringify((a as { data?: { handles?: unknown } } | undefined)?.data?.handles ?? null);
 
@@ -164,7 +164,7 @@ export function createAnnotationHistory(
     if (!live) return;
     const after = clone(live);
     if (handlesKey(before) === handlesKey(after)) {
-      stable.set(uid, after); // no geometry change — refresh baseline, record nothing
+      stable.set(uid, after); // no geometry change, so refresh baseline and record nothing
       return;
     }
     undoStack.push({

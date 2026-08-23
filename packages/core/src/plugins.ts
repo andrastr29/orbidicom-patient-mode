@@ -1,5 +1,5 @@
 /**
- * Plugin SDK — a single registration entry point that formalizes the core
+ * Plugin SDK: a single registration entry point that formalizes the core
  * registries (tools, window presets, data sources) into a public, host-facing
  * API. A plugin is a plain object; `registerPlugin` fans its contributions out
  * to the underlying registries the UI already reads from, so a host extends the
@@ -33,7 +33,7 @@ export interface DataSourceFactory<C = unknown> {
 
 const dataSources: DataSourceFactory[] = [];
 
-/** Register a backend factory (idempotent by `id` — first registration wins). */
+/** Register a backend factory (idempotent by `id`; first registration wins). */
 export function registerDataSource(factory: DataSourceFactory): void {
   if (!dataSources.some((d) => d.id === factory.id)) dataSources.push(factory);
 }

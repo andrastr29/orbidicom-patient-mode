@@ -10,7 +10,7 @@ export { fromDicomSr } from "./from-dicom-sr";
 
 /**
  * Route a JSON import payload (string or parsed object) to the right importer by
- * its `schema` tag. DICOM `.dcm` SEG/SR file parsing is Phase 1b — use the
+ * its `schema` tag. DICOM `.dcm` SEG/SR file parsing is Phase 1b; use the
  * `fromDicomSeg` / `fromDicomSr` functions directly for those.
  */
 export function importResults(input: string | object): AIResultSet {

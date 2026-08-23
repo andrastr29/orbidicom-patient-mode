@@ -12,7 +12,7 @@ const h = vi.hoisted(() => {
   // Frames the cache reports as already decoded.
   const loaded = new Set<string>();
   // Requests sitting in the pool, NOT yet started. The real pool shift()s a
-  // request out before running it, so "in the pool" == "not started" — the
+  // request out before running it, so "in the pool" == "not started"; the
   // distinction the prefetcher's reclaim logic depends on.
   const queue: FakeRequest[] = [];
   // In-flight loads, keyed by imageId, resolved/rejected by the test.
@@ -206,7 +206,7 @@ describe("createPrefetcher", () => {
     vi.advanceTimersByTime(200);
 
     // The in-flight frames occupy their slots until they settle, so only the
-    // remaining capacity is re-centered — and none of 0..19 is re-queued.
+    // remaining capacity is re-centered, and none of 0..19 is re-queued.
     expect(queuedIndices()).not.toContain(0);
     expect(queuedIndices().length).toBe(0);
   });
@@ -233,7 +233,7 @@ describe("createPrefetcher", () => {
 
     evict(3);
     // The queue is already at capacity, so frame 3 waits rather than overflowing
-    // it — but as the nearest frame we still want, it takes the next free slot.
+    // it, but as the nearest frame we still want, it takes the next free slot.
     await complete(4);
 
     expect(queuedIndices()).toContain(3);
@@ -245,7 +245,7 @@ describe("createPrefetcher", () => {
     await fail(3);
 
     // The failed frame frees its slot to the next frame we want, so the queue
-    // keeps moving — but it never comes back. A frame that cannot load must not
+    // keeps moving, but it never comes back. A frame that cannot load must not
     // spin the queue forever.
     expect(queuedIndices()).toEqual([20]);
     for (let guard = 0; guard < 100 && (h.queue.length || h.inFlight.size); guard++) {

@@ -21,7 +21,7 @@ vi.mock("../src/cornerstone/init", () => ({ TOOL_GROUP_ID: "test-group" }));
 
 import { createReferenceLines } from "../src/cornerstone/reference-lines";
 
-/** Order of the two calls matters — see the "configures before enabling" test. */
+/** Order of the two calls matters; see the "configures before enabling" test. */
 const callOrder = () =>
   [
     ...h.tg.setToolConfiguration.mock.invocationCallOrder.map((n) => [n, "config"] as const),
@@ -46,7 +46,7 @@ describe("createReferenceLines", () => {
     expect(r.getSource()).toBe("stack-2");
   });
 
-  it("configures the source BEFORE enabling — enabling re-inits against it", () => {
+  it("configures the source BEFORE enabling, because enabling re-inits against it", () => {
     createReferenceLines().setSource("stack-2");
     expect(callOrder()).toEqual(["config", "enable"]);
   });

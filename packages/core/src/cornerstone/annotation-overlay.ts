@@ -3,14 +3,14 @@
  * {@link getAnnotationDeleteTargets} projects each tracked, on-slice measurement's
  * label anchor to canvas pixels so the UI can float an "x" there, and
  * {@link deleteAnnotation} removes one annotation through Cornerstone's normal
- * (unguarded) path — which the annotation-history REMOVED listener records as an
+ * (unguarded) path, which the annotation-history REMOVED listener records as an
  * undoable delete (see annotation-history.ts).
  */
 import { annotation, Enums as csToolsEnums } from "@cornerstonejs/tools";
 import { eventTarget, Enums as csEnums } from "@cornerstonejs/core";
 import { ANNOTATION_TOOLS } from "./tool-names";
 
-/** Every user-drawn annotation gets a delete control — measurements and plain shapes. */
+/** Every user-drawn annotation gets a delete control: measurements and plain shapes. */
 const KNOWN_TOOLS = new Set<string>(ANNOTATION_TOOLS);
 
 /** Minimal annotation shape this module reads (avoids deep Cornerstone type coupling). */
@@ -74,12 +74,12 @@ export function getAnnotationDeleteTargets(
  *   circle annotation), which skips the entire label block.
  *
  * The placeholder is a truthy three-element array, so it passes every naive check
- * and silently anchors the control at the patient-coordinate ORIGIN — far outside
+ * and silently anchors the control at the patient-coordinate ORIGIN, far outside
  * any real image, where the "x" is rendered but can never be seen or clicked.
  *
  * Test the placeholder rather than listing tools: the list is exactly what let
  * `Probe` slip through after the same bug was fixed for `CircleROI`. Anchoring at
- * the true origin is not a case worth preserving anyway — the handle fallback is
+ * the true origin is not a case worth preserving anyway; the handle fallback is
  * a better answer there too.
  */
 function isTextBoxPlaced(world?: number[]): boolean {
@@ -92,7 +92,7 @@ function isTextBoxPlaced(world?: number[]): boolean {
  *
  * The measurement's label when the tool actually placed one: the "x" sits beside
  * the numbers, which is where the eye already is. Otherwise the LAST handle point
- * — a circle's rim, where the user released the drag, or a probe's single point.
+ * (a circle's rim, where the user released the drag, or a probe's single point).
  * Not the first handle: on a circle that is the centre, and the control would land
  * on top of the very finding the annotation marks.
  */

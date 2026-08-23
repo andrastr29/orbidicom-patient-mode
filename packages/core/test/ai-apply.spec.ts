@@ -136,7 +136,7 @@ describe("removeAppliedSegmentations", () => {
       ],
     };
     const first = await applyResultSet(setWithSeg, { viewportId: "vp1", stack: [] });
-    // The re-apply cycle: fully deregister, then apply again — must not throw.
+    // The re-apply cycle: fully deregister, then apply again; must not throw.
     expect(() => removeAppliedSegmentations(first.segmentationIds)).not.toThrow();
     await expect(
       applyResultSet(setWithSeg, { viewportId: "vp1", stack: [] }),

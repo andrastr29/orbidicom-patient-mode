@@ -63,7 +63,7 @@ const {
     // watcher run before onMounted resumes.
     initCornerstone: vi.fn().mockResolvedValue(undefined),
     // Each cell gets its own viewport id (the real handles do) so multi-cell
-    // features — scroll sync, reference lines — can tell the cells apart. The
+    // features (scroll sync, reference lines) can tell the cells apart. The
     // spied methods are shared, so `stack.setStack` assertions still work.
     createStack: vi.fn(() => {
       const viewportId = `stack-${stackSeq++}`;
@@ -202,7 +202,7 @@ vi.mock("@orbidicom/core", () => {
         : { cellCount: 1, assignments: [ser.length ? 0 : -1] },
     VR_PRESETS: ["CT-Bone", "CT-Soft-Tissue", "CT-Lung", "MR-Default"],
     defaultVrPreset: (m?: string) => (String(m).toUpperCase() === "MR" ? "MR-Default" : "CT-Bone"),
-    // AI & Results (Phase 1) — the Viewer imports these at module scope. Stubs are
+    // AI & Results (Phase 1): the Viewer imports these at module scope. Stubs are
     // enough for the gate tests (the panel opens without invoking any of them).
     importResults: vi.fn(() => ({
       schema: "orbidicom.ai-results/v1",
@@ -508,7 +508,7 @@ describe("Viewer", () => {
     await flushPromises();
     expect(refLines.setSource).toHaveBeenLastCalledWith(null);
 
-    // Back on, then collapse to a single cell — nothing left to draw onto.
+    // Back on, then collapse to a single cell: nothing left to draw onto.
     await w.find(".tbtn--reflines").trigger("click");
     await flushPromises();
     await w.find(".layout__select").setValue("1");
@@ -572,7 +572,7 @@ describe("Viewer", () => {
     stack.invert.mockClear();
     mount(Viewer, { props: { source: source as never } });
     await flushPromises();
-    // Ctrl+I is a browser/OS combo, not one of ours — invert must not fire.
+    // Ctrl+I is a browser/OS combo, not one of ours, so invert must not fire.
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "i", ctrlKey: true }));
     expect(stack.invert).not.toHaveBeenCalled();
   });
@@ -678,7 +678,7 @@ describe("Viewer", () => {
 
   it("downloads the active slice as a JPEG (image + annotations) with a sensible filename", async () => {
     stack.captureSliceJpeg.mockClear();
-    // jsdom doesn't implement object URLs or anchor navigation — stub them.
+    // jsdom doesn't implement object URLs or anchor navigation, so stub them.
     URL.createObjectURL = vi.fn(() => "blob:mock");
     URL.revokeObjectURL = vi.fn();
     let downloadName = "";
@@ -790,7 +790,7 @@ describe("Viewer", () => {
     await play().trigger("click");
     expect(stack.playCine).toHaveBeenLastCalledWith(20);
 
-    // Back to cell 0 — the dropdown must show ITS fps (5), not cell 1's 20.
+    // Back to cell 0: the dropdown must show ITS fps (5), not cell 1's 20.
     await cells[0].trigger("pointerdown");
     expect((speed().element as HTMLSelectElement).value).toBe("5");
   });
@@ -946,7 +946,7 @@ describe("multi-study lifecycle", () => {
     expect(uidsOf(w)).toEqual(["O1"]);
   });
 
-  // The add path is covered above; this is the close-direction twin — a surviving
+  // The add path is covered above; this is the close-direction twin: a surviving
   // cell whose series shifts DOWN when the block above it is removed. Without the
   // remap this cell would keep index 1 (now out of range) or, with one more study
   // open, silently render a different patient's scan.
@@ -968,14 +968,14 @@ describe("multi-study lifecycle", () => {
     rail(w).vm.$emit("close-study", "NEW");
     await flushPromises();
     expect(uidsOf(w)).toEqual(["O1"]);
-    // Cell 1 still shows O1 — now at flat index 0, not a stale 1.
+    // Cell 1 still shows O1, now at flat index 0, not a stale 1.
     expect(rail(w).props("active")).toBe(0);
     // Cell 0's series is gone, so it is blank rather than pointing at O1 too.
     expect(rail(w).props("displayed")).toEqual([0]);
   });
 
   // Mid-session adds must not re-run the hanging protocol (it would wipe key
-  // images and annotations) — but an EMPTY viewer has no such work to lose, and
+  // images and annotations), but an EMPTY viewer has no such work to lose, and
   // leaving the stage black after a study is added would look like a failed load.
   it("hangs the first study added to an empty viewer", async () => {
     const src = twoStudySource();
@@ -1054,7 +1054,7 @@ describe("multi-study lifecycle", () => {
     expect(uidsOf(w)).toEqual(["O1"]);
   });
 
-  // C1 — the MPR is a second handle covering the whole stage, and exitMpr is
+  // C1: the MPR is a second handle covering the whole stage, and exitMpr is
   // otherwise only reachable from the layout picker. Blanking the cell it was
   // built from has to tear it down, or the closed study keeps rendering (and
   // keeps being exportable via captureJpeg) after the rail has forgotten it.
@@ -1091,7 +1091,7 @@ describe("multi-study lifecycle", () => {
     return { src, release: () => open() };
   }
 
-  // C2a — the mount load must not reinstate a study the host has already
+  // C2a: the mount load must not reinstate a study the host has already
   // dismissed, nor reassign series.value under a cell that has moved on.
   it("does not let the mount load overwrite a study the host swapped to mid-flight", async () => {
     const { src, release } = gatedSource();
@@ -1109,7 +1109,7 @@ describe("multi-study lifecycle", () => {
     expect(ev?.[ev.length - 1]).toEqual([["NEW"]]);
   });
 
-  // C2b — the open set must be derived from what actually loaded, not written
+  // C2b: the open set must be derived from what actually loaded, not written
   // straight from the prop: doing the latter makes the watcher skip a study it
   // never fetched, and lets the mount's own study be merged a second time.
   it("loads a study appended to studyUids while the mount load is still in flight", async () => {
@@ -1128,7 +1128,7 @@ describe("multi-study lifecycle", () => {
     expect(spy.mock.calls.flat(2).filter((u) => u === "OLD")).toHaveLength(1);
   });
 
-  // I1 — "no cell is hung" is not "no session state". A study can be open, and
+  // I1: "no cell is hung" is not "no session state". A study can be open, and
   // carry key images, while every cell happens to be blank.
   it("keeps another open study's key images when a study is added after the cells emptied", async () => {
     const w = mount(Viewer, {
@@ -1141,7 +1141,7 @@ describe("multi-study lifecycle", () => {
     rail(w).vm.$emit("select", 1);
     await flushPromises();
 
-    // Closing OLD empties every cell — but NEW is still open, with its flag.
+    // Closing OLD empties every cell, but NEW is still open, with its flag.
     rail(w).vm.$emit("close-study", "OLD");
     await flushPromises();
     expect(uidsOf(w)).toEqual(["N1"]);
@@ -1152,11 +1152,11 @@ describe("multi-study lifecycle", () => {
     expect(w.find(".tbtn--export-keyimages").exists()).toBe(true);
   });
 
-  // I2 — the idempotence guard is checked before an await, so it has to consult
+  // I2: the idempotence guard is checked before an await, so it has to consult
   // the in-flight set too or a second prop change re-enters the same add.
   it("fetches a study once when two prop changes race the same add", async () => {
     const src = twoStudySource();
-    // Hold NEW's fetch open so the second prop change genuinely lands mid-flight —
+    // Hold NEW's fetch open so the second prop change genuinely lands mid-flight;
     // without a gate the first add resolves first and openStudyUids alone covers it.
     let open!: () => void;
     const gate = new Promise<void>((r) => (open = r));
@@ -1186,7 +1186,7 @@ describe("multi-study lifecycle", () => {
     ]);
   });
 
-  // I3 — user work outlives the cell that displayed it, so both the confirm gate
+  // I3: user work outlives the cell that displayed it, so both the confirm gate
   // and the purge must key off the series, not off what is currently hung.
   it("confirms and purges key images on a series that has since left its cell", async () => {
     const w = mount(Viewer, {
@@ -1229,7 +1229,7 @@ describe("multi-study lifecycle", () => {
     }
   });
 
-  // Minor — study-scoped actions must target what is open, not props.studyUids[0],
+  // Minor: study-scoped actions must target what is open, not props.studyUids[0],
   // which can name a study this session has already closed. Two cells, so the
   // closed study's cell stays blank (another visible cell is still hung, so the
   // re-hang below correctly leaves it alone) and the fallback is reached.
@@ -1259,7 +1259,7 @@ describe("multi-study lifecycle", () => {
     expect(downloadArchive).toHaveBeenCalledWith("OLD");
   });
 
-  // Round-2 Important — the bootstrap fetch must not run once the watcher has
+  // Round-2 Important: the bootstrap fetch must not run once the watcher has
   // claimed the session. DicomJsonDataSource and LocalDataSource read an empty
   // uid list as "every study I hold", and those extra studies would land in the
   // rail outside openStudyUids, where the close pass can never reach them.
@@ -1286,7 +1286,7 @@ describe("multi-study lifecycle", () => {
     ready();
     await flushPromises();
 
-    // Only the requested study — no unrequested patient's series in the rail.
+    // Only the requested study: no unrequested patient's series in the rail.
     expect(uidsOf(w)).toEqual(["N1"]);
   });
 
@@ -1298,7 +1298,7 @@ describe("multi-study lifecycle", () => {
     expect(uidsOf(w)).toEqual(["N1", "M1", "O1"]);
   });
 
-  // Final-review 1 — the rail materializes each group's collapse default exactly
+  // Final-review 1: the rail materializes each group's collapse default exactly
   // once, at Vue's first flush. A sequential load loop left cells >= 1 empty then,
   // so a study whose only on-screen series was headed for a later cell got frozen
   // collapsed for the session.
@@ -1322,7 +1322,7 @@ describe("multi-study lifecycle", () => {
     expect(w.findAll(".rail__item")).toHaveLength(2);
   });
 
-  // Final-review 2 — `assignments` holds positional indices computed once and
+  // Final-review 2: `assignments` holds positional indices computed once and
   // consumed across awaits; a concurrent add reorders series.value, and remapCells
   // cannot repair an index the loop has not reached yet.
   it("hangs the protocol's chosen series even when an add reorders the list mid-load", async () => {
@@ -1348,12 +1348,12 @@ describe("multi-study lifecycle", () => {
     await flushPromises();
 
     expect(uidsOf(w)).toEqual(["N1", "OA", "OB", "OC", "OD"]);
-    // The four cells still hold OLD's four series, in the protocol's order — not
+    // The four cells still hold OLD's four series, in the protocol's order, not
     // N1 and a replay of the shifted positions.
     expect(rail(w).props("displayed")).toEqual([1, 2, 3, 4]);
   });
 
-  // Final-review 3 — the close pass reads "absent from the prop" as "the host
+  // Final-review 3: the close pass reads "absent from the prop" as "the host
   // dropped it", but a picker-opened study was never in the prop at all. An
   // uncontrolled host (the shipped demo binds :study-uids one-way) would destroy
   // it, with its measurements and no confirm, on its next prop write.
@@ -1369,7 +1369,7 @@ describe("multi-study lifecycle", () => {
     await flushPromises();
     expect(uidsOf(w)).toEqual(["M1", "O1"]);
 
-    // Same content, fresh array identity — exactly what openPacs() or any inline
+    // Same content, fresh array identity: exactly what openPacs() or any inline
     // literal in a re-rendering parent produces.
     await w.setProps({ studyUids: ["OLD"] });
     await flushPromises();
@@ -1401,7 +1401,7 @@ describe("multi-study lifecycle", () => {
     expect(uidsOf(w)).toEqual(["O1"]);
   });
 
-  // Final-review 4 — the studyUids watcher is live from setup, so it can reach
+  // Final-review 4: the studyUids watcher is live from setup, so it can reach
   // loadIntoCell -> createStack before onMounted's initCornerstone() resolves.
   // A real browser would build a viewport against an uninitialised library.
   it("never builds a viewport before Cornerstone init resolves", async () => {
@@ -1426,7 +1426,7 @@ describe("multi-study lifecycle", () => {
     expect(uidsOf(w)).toEqual(["N1"]);
   });
 
-  // Final-review 5 — with two patients open at once, a destructive confirm has to
+  // Final-review 5: with two patients open at once, a destructive confirm has to
   // say which study it is about.
   it("names the study in the close confirm", async () => {
     const w = mount(Viewer, {
@@ -1449,7 +1449,7 @@ describe("multi-study lifecycle", () => {
     expect(modal.find(".modal__msg").text()).toContain("Close this study?");
   });
 
-  // Final-review 6 — the must-NOT-run direction of the wasEmpty gate is pinned
+  // Final-review 6: the must-NOT-run direction of the wasEmpty gate is pinned
   // above; this pins the must-RUN one. Deleting the applyInitialLayout call
   // otherwise leaves the suite green, because ensureSomethingShown fills a single
   // cell and covers those assertions. Only applyInitialLayout can open a grid.
@@ -1472,7 +1472,7 @@ describe("multi-study lifecycle", () => {
     expect(rail(w).props("displayed")).toEqual([0, 1, 2, 3]);
   });
 
-  // Round-2 residual — replacing one study with another must not leave a black
+  // Round-2 residual: replacing one study with another must not leave a black
   // stage. The merge sees a non-empty session so it doesn't re-hang, then the
   // close pass blanks the old study's cell; at cellCount === 1 the "pick a
   // series" chip is suppressed, so nothing at all would be on screen.

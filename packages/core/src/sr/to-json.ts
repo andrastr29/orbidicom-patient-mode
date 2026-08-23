@@ -1,5 +1,5 @@
 /**
- * DICOM-SR generation — turn collected {@link Measurement}s into a Comprehensive
+ * DICOM-SR generation: turn collected {@link Measurement}s into a Comprehensive
  * SR dataset (DICOM-JSON), shaped after TID 1500 "Measurement Report". This is the
  * write counterpart of {@link srTreeFromJson}: the output round-trips back through
  * that reader, and a host can encode it to Part-10 (e.g. dcmjs) and push it with
@@ -106,7 +106,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const da = (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 const tm = (d: Date) => `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 
-// 2.25-rooted UID from a decimal rendering of randomness — a valid, registration-free
+// 2.25-rooted UID from a decimal rendering of randomness: a valid, registration-free
 // arc (ISO/IEC 9834-8). Deterministic alternative is injectable via opts.sopInstanceUid.
 function defaultUid(): string {
   const rand = Math.floor(Math.random() * 1e15);

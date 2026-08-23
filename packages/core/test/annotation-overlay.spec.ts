@@ -56,7 +56,7 @@ describe("getAnnotationDeleteTargets", () => {
   it("anchors a plain CircleROI on its rim, not on the unused text-box placeholder", () => {
     // Every Cornerstone annotation is born with textBox.worldPosition [0,0,0],
     // and only renderLinkedTextBoxAnnotation replaces it. CircleROI runs with
-    // calculateStats:false, so that never happens and the placeholder survives —
+    // calculateStats:false, so that never happens and the placeholder survives,
     // anchoring there would put the "x" at the patient-coordinate origin, far
     // outside the image, and the control would be invisible.
     const circle = ann({
@@ -76,9 +76,9 @@ describe("getAnnotationDeleteTargets", () => {
     expect(out).toEqual([{ uid: "c1", toolName: "CircleROI", canvas: { x: 50, y: 20 } }]);
   });
 
-  it("anchors a Probe on its point — ProbeTool never positions the linked text box", () => {
+  it("anchors a Probe on its point, because ProbeTool never positions its text box", () => {
     // ProbeTool draws its value with drawTextBox directly at a canvas position and
-    // never calls renderLinkedTextBoxAnnotation, so — unlike Length/Angle/the ROIs —
+    // never calls renderLinkedTextBoxAnnotation, so, unlike Length/Angle/the ROIs,
     // its textBox.worldPosition keeps Cornerstone's [0,0,0] placeholder for the
     // annotation's whole life. Same failure as the plain circle, different cause.
     const probe = ann({

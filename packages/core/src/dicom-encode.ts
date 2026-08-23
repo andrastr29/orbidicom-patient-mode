@@ -1,5 +1,5 @@
 /**
- * Minimal DICOM Part-10 writer — encodes a DICOM-JSON dataset (the tag-keyed
+ * Minimal DICOM Part-10 writer: encodes a DICOM-JSON dataset (the tag-keyed
  * `{ vr, Value }` shape produced by `sr/to-json.ts`) into an Explicit VR Little
  * Endian Part-10 byte stream suitable for STOW-RS (`application/dicom`).
  *
@@ -125,7 +125,7 @@ function encodeValue(vr: string, value: unknown[] | undefined): Uint8Array {
   return encodeText(vr, value); // safe fallback
 }
 
-// Item / delimitation tags carry no VR — just tag + 4-byte length.
+// Item / delimitation tags carry no VR, just tag + 4-byte length.
 const itemStart = () => concat([u16(0xfffe), u16(0xe000), u32(0xffffffff)]);
 const itemEnd = () => concat([u16(0xfffe), u16(0xe00d), u32(0)]);
 const seqEnd = () => concat([u16(0xfffe), u16(0xe0dd), u32(0)]);

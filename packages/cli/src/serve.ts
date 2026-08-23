@@ -30,7 +30,7 @@ export async function serve(opts: CliOptions, root: string = demoDistDir()): Pro
   const server: Server = createServer((req, res) => {
     const path = (req.url ?? "").split("?")[0];
     // Inject runtime config so the static bundle connects to the chosen PACS
-    // without rebuilding — same role as config.js in the container image.
+    // without rebuilding; the same role as config.js in the container image.
     if (path === "/config.js") {
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/javascript; charset=utf-8");
@@ -62,6 +62,6 @@ export function openBrowser(url: string): void {
     child.on("error", () => {});
     child.unref();
   } catch {
-    /* headless / no browser — the printed URL is enough */
+    /* headless / no browser; the printed URL is enough */
   }
 }

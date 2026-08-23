@@ -12,7 +12,7 @@ if (opts.command === "serve") {
     if (opts.study) console.log(`  study: ${opts.study}`);
     else console.log("  (append ?study=<StudyInstanceUID> or pass --study to open a study)");
   } else {
-    console.log(`OrbiDICOM running at ${url} (local mode — drag in .dcm / .nii files)`);
+    console.log(`OrbiDICOM running at ${url} (local mode: drag in .dcm / .nii files)`);
   }
   if (opts.open) openBrowser(url);
   console.log("Press Ctrl+C to stop.");

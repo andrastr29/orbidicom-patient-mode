@@ -199,7 +199,7 @@ describe("SeriesRail", () => {
       series: [...series, { seriesInstanceUID: "S3", modality: "CT", numberOfFrames: 9 }],
     });
     await flushPromises();
-    // Only the new row resolves — the first two keep their cached previews.
+    // Only the new row resolves; the first two keep their cached previews.
     expect(provider.get).toHaveBeenCalledTimes(3);
     expect(w.findAll(".rail__item")[0].find(".rail__img").exists()).toBe(true);
   });
@@ -256,7 +256,7 @@ describe("SeriesRail", () => {
       expect(provider.get).not.toHaveBeenCalled();
       expect(instances.length).toBe(1);
       expect(instances[0].observedEls.length).toBe(3);
-      // Remove S3 — a genuine disappearance, so the observer is disconnected
+      // Remove S3, a genuine disappearance, so the observer is disconnected
       // and rebuilt. S1 and S2 survive but were still pending on the OLD
       // observer, which is now dead.
       await w.setProps({ series: [three[0], three[1]], active: 0, provider });
@@ -381,7 +381,7 @@ describe("multi-study grouping", () => {
   });
 
   // CSS-only concern (mobile layout for .rail__group) isn't testable in jsdom,
-  // which doesn't apply media queries — this instead pins the DOM structure the
+  // which doesn't apply media queries, so this instead pins the DOM structure the
   // mobile styles rely on: each group header sits immediately before its own
   // rows, in study order, with every series accounted for under the right group.
   it("renders each group header immediately before its own rows, in study order", async () => {
@@ -414,7 +414,7 @@ describe("multi-study grouping", () => {
 
   // The mobile styles dim a collapsed prior and hide its close button, and both
   // hang off this modifier class. jsdom applies no media queries, so the styling
-  // itself can't be asserted — but the hook can, which is what keeps it from
+  // itself can't be asserted, but the hook can, which is what keeps it from
   // silently detaching from the collapse state it is supposed to reflect.
   it("marks collapsed groups with the modifier class the mobile styles hook", async () => {
     const w = mount(SeriesRail, { props: { series: twoStudies, active: 0 } });
@@ -466,7 +466,7 @@ describe("multi-study grouping", () => {
     expect(w.findAll(".rail__item").length).toBe(3);
     // The user then looks at group 1: displayed/active moves away from group 2's row.
     await w.setProps({ active: 0, displayed: [0] });
-    // Group 2 must stay expanded — rule 2 only decided the default, it doesn't keep
+    // Group 2 must stay expanded: rule 2 only decided the default, it doesn't keep
     // re-evaluating on every render and silently collapsing the row the user was
     // just browsing.
     expect(w.findAll(".rail__item").length).toBe(3);
@@ -506,7 +506,7 @@ describe("multi-study grouping", () => {
       await flushPromises();
       // Group 1 (N1, N2) is expanded by default and both rows are observed.
       expect(observedEls.length).toBe(2);
-      // Expand group 2: its row (O1) mounts, binds, and registers — but nothing
+      // Expand group 2: its row (O1) mounts, binds, and registers, but nothing
       // intersects it, so it stays pending (never resolved).
       await w.findAll(".rail__group-toggle")[1].trigger("click");
       expect(observedEls.length).toBe(3);
@@ -515,7 +515,7 @@ describe("multi-study grouping", () => {
       await w.findAll(".rail__group-toggle")[1].trigger("click");
       // Re-expand: a fresh element mounts. Without the fix, O1's stale `observed`
       // entry from the first mount would make bindThumb's guard short-circuit,
-      // and the new element would never be registered — permanently orphaned.
+      // and the new element would never be registered, i.e. permanently orphaned.
       await w.findAll(".rail__group-toggle")[1].trigger("click");
       expect(observedEls.length).toBe(4); // O1 re-registered on the new element
       // Prove it end-to-end: intersecting the re-registered element still loads.
