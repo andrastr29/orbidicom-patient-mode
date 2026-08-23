@@ -8,16 +8,10 @@
  */
 import { annotation, Enums as csToolsEnums } from "@cornerstonejs/tools";
 import { eventTarget, Enums as csEnums } from "@cornerstonejs/core";
-import { ANNOTATION_TOOLS, SHAPE_TOOLS } from "./tool-names";
+import { ANNOTATION_TOOLS } from "./tool-names";
 
 /** Every user-drawn annotation gets a delete control — measurements and plain shapes. */
 const KNOWN_TOOLS = new Set<string>(ANNOTATION_TOOLS);
-
-/**
- * Tools that draw no measurement text box, so their annotation has no label to
- * anchor the delete control to. See `anchorOf` for why this matters.
- */
-const NO_TEXT_BOX = new Set<string>(SHAPE_TOOLS);
 
 /** Minimal annotation shape this module reads (avoids deep Cornerstone type coupling). */
 export interface OverlayAnnotation {
@@ -59,7 +53,7 @@ export function getAnnotationDeleteTargets(
     const ref = a.metadata?.referencedImageId;
     // Only annotations drawn on the slice currently shown (Cornerstone draws only those too).
     if (currentImageId && ref && ref !== currentImageId) continue;
-    const anchor = anchorOf(a, toolName);
+    const anchor = anchorOf(a);
     if (!anchor || anchor.length < 3) continue;
     const [x, y] = viewport.worldToCanvas(anchor.slice(0, 3) as [number, number, number]);
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
@@ -69,25 +63,43 @@ export function getAnnotationDeleteTargets(
 }
 
 /**
+ * Cornerstone stamps EVERY annotation with `textBox.worldPosition = [0, 0, 0]` at
+ * creation and only `renderLinkedTextBoxAnnotation` ever replaces it with a real
+ * position. Plenty of tools never reach that call, and their placeholder survives
+ * for the annotation's whole life:
+ *
+ * - `Probe` draws its value with `drawTextBox` straight onto the canvas and does
+ *   not use the linked text box at all;
+ * - `CircleROI` would, but we register it with `calculateStats: false` (the plain
+ *   circle annotation), which skips the entire label block.
+ *
+ * The placeholder is a truthy three-element array, so it passes every naive check
+ * and silently anchors the control at the patient-coordinate ORIGIN — far outside
+ * any real image, where the "x" is rendered but can never be seen or clicked.
+ *
+ * Test the placeholder rather than listing tools: the list is exactly what let
+ * `Probe` slip through after the same bug was fixed for `CircleROI`. Anchoring at
+ * the true origin is not a case worth preserving anyway — the handle fallback is
+ * a better answer there too.
+ */
+function isTextBoxPlaced(world?: number[]): boolean {
+  if (!world || world.length < 3) return false;
+  return !(world[0] === 0 && world[1] === 0 && world[2] === 0);
+}
+
+/**
  * Where to hang the delete control for one annotation, in world coordinates.
  *
- * Normally the measurement's label: the "x" sits beside the numbers, which is
- * where the eye already is. But the text box cannot be trusted for every tool.
- * Cornerstone gives EVERY annotation a `textBox.worldPosition` of `[0, 0, 0]` at
- * creation, and only `renderLinkedTextBoxAnnotation` — which runs solely when a
- * tool actually draws a label — replaces it with a real position. A plain shape
- * tool (`calculateStats: false`, so no label at all) never gets there, and the
- * placeholder survives: a truthy 3-element array that passes every check and puts
- * the control at the patient-coordinate origin, i.e. off-image and invisible.
- *
- * So shapes anchor on their LAST handle point instead — the rim of a circle,
- * where the user released the drag. Not the first: that is the centre, and the
- * control would land on top of the very finding the shape is pointing at.
+ * The measurement's label when the tool actually placed one: the "x" sits beside
+ * the numbers, which is where the eye already is. Otherwise the LAST handle point
+ * — a circle's rim, where the user released the drag, or a probe's single point.
+ * Not the first handle: on a circle that is the centre, and the control would land
+ * on top of the very finding the annotation marks.
  */
-function anchorOf(a: OverlayAnnotation, toolName: string): number[] | undefined {
+function anchorOf(a: OverlayAnnotation): number[] | undefined {
   const points = a.data?.handles?.points;
-  if (NO_TEXT_BOX.has(toolName)) return points?.[points.length - 1];
-  return a.data?.handles?.textBox?.worldPosition ?? points?.[0];
+  const textBox = a.data?.handles?.textBox?.worldPosition;
+  return isTextBoxPlaced(textBox) ? textBox : points?.[points.length - 1];
 }
 
 /**

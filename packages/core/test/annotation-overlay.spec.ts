@@ -76,6 +76,22 @@ describe("getAnnotationDeleteTargets", () => {
     expect(out).toEqual([{ uid: "c1", toolName: "CircleROI", canvas: { x: 50, y: 20 } }]);
   });
 
+  it("anchors a Probe on its point — ProbeTool never positions the linked text box", () => {
+    // ProbeTool draws its value with drawTextBox directly at a canvas position and
+    // never calls renderLinkedTextBoxAnnotation, so — unlike Length/Angle/the ROIs —
+    // its textBox.worldPosition keeps Cornerstone's [0,0,0] placeholder for the
+    // annotation's whole life. Same failure as the plain circle, different cause.
+    const probe = ann({
+      annotationUID: "p1",
+      metadata: { toolName: "Probe", referencedImageId: "img-1" },
+      data: {
+        handles: { points: [[6, 7, 0]], textBox: { worldPosition: [0, 0, 0] } },
+      },
+    });
+    const out = getAnnotationDeleteTargets(vp, () => [probe]);
+    expect(out).toEqual([{ uid: "p1", toolName: "Probe", canvas: { x: 60, y: 70 } }]);
+  });
+
   it("still anchors measurements on their text box, which the renderer does position", () => {
     const length = ann({
       annotationUID: "m1",
