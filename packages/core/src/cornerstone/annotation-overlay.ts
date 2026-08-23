@@ -8,10 +8,16 @@
  */
 import { annotation, Enums as csToolsEnums } from "@cornerstonejs/tools";
 import { eventTarget, Enums as csEnums } from "@cornerstonejs/core";
-import { ANNOTATION_TOOLS } from "./tool-names";
+import { ANNOTATION_TOOLS, SHAPE_TOOLS } from "./tool-names";
 
 /** Every user-drawn annotation gets a delete control — measurements and plain shapes. */
 const KNOWN_TOOLS = new Set<string>(ANNOTATION_TOOLS);
+
+/**
+ * Tools that draw no measurement text box, so their annotation has no label to
+ * anchor the delete control to. See `anchorOf` for why this matters.
+ */
+const NO_TEXT_BOX = new Set<string>(SHAPE_TOOLS);
 
 /** Minimal annotation shape this module reads (avoids deep Cornerstone type coupling). */
 export interface OverlayAnnotation {
@@ -53,13 +59,35 @@ export function getAnnotationDeleteTargets(
     const ref = a.metadata?.referencedImageId;
     // Only annotations drawn on the slice currently shown (Cornerstone draws only those too).
     if (currentImageId && ref && ref !== currentImageId) continue;
-    const anchor = a.data?.handles?.textBox?.worldPosition ?? a.data?.handles?.points?.[0];
+    const anchor = anchorOf(a, toolName);
     if (!anchor || anchor.length < 3) continue;
     const [x, y] = viewport.worldToCanvas(anchor.slice(0, 3) as [number, number, number]);
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
     out.push({ uid: a.annotationUID ?? "", toolName, canvas: { x, y } });
   }
   return out;
+}
+
+/**
+ * Where to hang the delete control for one annotation, in world coordinates.
+ *
+ * Normally the measurement's label: the "x" sits beside the numbers, which is
+ * where the eye already is. But the text box cannot be trusted for every tool.
+ * Cornerstone gives EVERY annotation a `textBox.worldPosition` of `[0, 0, 0]` at
+ * creation, and only `renderLinkedTextBoxAnnotation` — which runs solely when a
+ * tool actually draws a label — replaces it with a real position. A plain shape
+ * tool (`calculateStats: false`, so no label at all) never gets there, and the
+ * placeholder survives: a truthy 3-element array that passes every check and puts
+ * the control at the patient-coordinate origin, i.e. off-image and invisible.
+ *
+ * So shapes anchor on their LAST handle point instead — the rim of a circle,
+ * where the user released the drag. Not the first: that is the centre, and the
+ * control would land on top of the very finding the shape is pointing at.
+ */
+function anchorOf(a: OverlayAnnotation, toolName: string): number[] | undefined {
+  const points = a.data?.handles?.points;
+  if (NO_TEXT_BOX.has(toolName)) return points?.[points.length - 1];
+  return a.data?.handles?.textBox?.worldPosition ?? points?.[0];
 }
 
 /**

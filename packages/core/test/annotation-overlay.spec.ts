@@ -53,13 +53,37 @@ describe("getAnnotationDeleteTargets", () => {
     expect(out).toEqual([]);
   });
 
-  it("gives a plain CircleROI annotation a delete control too (shapes are deletable)", () => {
+  it("anchors a plain CircleROI on its rim, not on the unused text-box placeholder", () => {
+    // Every Cornerstone annotation is born with textBox.worldPosition [0,0,0],
+    // and only renderLinkedTextBoxAnnotation replaces it. CircleROI runs with
+    // calculateStats:false, so that never happens and the placeholder survives —
+    // anchoring there would put the "x" at the patient-coordinate origin, far
+    // outside the image, and the control would be invisible.
     const circle = ann({
       annotationUID: "c1",
       metadata: { toolName: "CircleROI", referencedImageId: "img-1" },
+      data: {
+        handles: {
+          points: [
+            [1, 2, 0], // centre
+            [5, 2, 0], // the rim point the user dragged to
+          ],
+          textBox: { worldPosition: [0, 0, 0] },
+        },
+      },
     });
     const out = getAnnotationDeleteTargets(vp, () => [circle]);
-    expect(out).toEqual([{ uid: "c1", toolName: "CircleROI", canvas: { x: 30, y: 40 } }]);
+    expect(out).toEqual([{ uid: "c1", toolName: "CircleROI", canvas: { x: 50, y: 20 } }]);
+  });
+
+  it("still anchors measurements on their text box, which the renderer does position", () => {
+    const length = ann({
+      annotationUID: "m1",
+      data: {
+        handles: { points: [[1, 2, 0]], textBox: { worldPosition: [3, 4, 0] } },
+      },
+    });
+    expect(getAnnotationDeleteTargets(vp, () => [length])[0].canvas).toEqual({ x: 30, y: 40 });
   });
 
   it("skips auto-generated, unknown tools, and annotations on other slices", () => {
