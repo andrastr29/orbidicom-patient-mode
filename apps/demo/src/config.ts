@@ -23,7 +23,15 @@ export interface RuntimeConfig {
    */
   auth?: AuthStrategy;
   /** Optional per-deployment feature toggles. */
-  features?: { aiResults?: boolean };
+  features?: {
+    aiResults?: boolean;
+    /**
+     * Patient-facing mode: hides the study-management and image-export
+     * affordances (Add study, New study, Download image as JPG). Set via
+     * `features.patient` in config.js or `?patient=1` in the URL.
+     */
+    patient?: boolean;
+  };
 }
 
 declare global {
@@ -46,14 +54,17 @@ export function mergeConfig(base: RuntimeConfig, search: string): RuntimeConfig 
   };
   // Auth comes from the base config ONLY (never a query param), so a crafted
   // link can't inject or downgrade credentials.
-  const aiParam = params.get("ai");
-  const aiResults =
-    aiParam != null ? aiParam === "1" || aiParam === "true" : (base.features?.aiResults ?? false);
+  const flag = (key: string, fallback: boolean): boolean => {
+    const v = params.get(key);
+    return v != null ? v === "1" || v === "true" : fallback;
+  };
+  const aiResults = flag("ai", base.features?.aiResults ?? false);
+  const patient = flag("patient", base.features?.patient ?? false);
   return {
     pacsUrl: pick("pacs", base.pacsUrl),
     studyUid: pick("study", base.studyUid),
     auth: base.auth,
-    features: { aiResults },
+    features: { aiResults, patient },
   };
 }
 

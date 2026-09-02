@@ -15,6 +15,11 @@ export interface CliOptions {
   rest: string[];
   /** Enable the in-app AI & Results panel (serve). */
   ai?: boolean;
+  /**
+   * Patient-facing mode (serve): hides the study-management and image-export
+   * affordances (Add study, New study, Download image as JPG).
+   */
+  patient?: boolean;
 }
 
 const COMMANDS = new Set<Command>(["serve", "init", "ai", "generate"]);
@@ -61,6 +66,9 @@ export function parseArgs(argv: string[]): CliOptions {
         break;
       case "--ai":
         opts.ai = true;
+        break;
+      case "--patient":
+        opts.patient = true;
         break;
       default:
         if (a) opts.rest.push(a);

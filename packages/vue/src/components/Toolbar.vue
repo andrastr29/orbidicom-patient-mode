@@ -363,10 +363,12 @@
     </template>
 
     <!-- Save the active slice (image + measurements) as a JPEG. Hidden for
-         report cells / cells with no image stack. -->
+         report cells / cells with no image stack, and when the deployment opts
+         out via features.imageDownload (allowImageDownload === false). -->
     <template v-if="canDownloadImage">
       <div class="toolbar__sep" />
       <button
+        v-if="allowImageDownload !== false"
         v-tip="t('downloadImage')"
         class="tbtn tbtn--download-image"
         @click="$emit('downloadImage')"
@@ -546,6 +548,9 @@ const props = defineProps<{
   canDownload?: boolean;
   /** Whether the active cell holds a rendered image stack that can be exported. */
   canDownloadImage?: boolean;
+  /** Deployment opt-out for the "Download image as JPG" button; only an explicit
+   *  `false` hides it (see features.imageDownload). */
+  allowImageDownload?: boolean;
   /** Whether any measurements exist to export. */
   canExportMeasurements?: boolean;
   /** Whether there's an annotation action to undo / redo (enables the buttons). */

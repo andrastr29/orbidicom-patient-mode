@@ -42,3 +42,12 @@ describe("parseArgs --ai", () => {
     expect(parseArgs(["serve", "--ai"]).ai).toBe(true);
   });
 });
+
+describe("parseArgs --patient", () => {
+  it("sets patient:true on the serve command", () => {
+    expect(parseArgs(["serve", "--patient"]).patient).toBe(true);
+  });
+  it("is undefined by default", () => {
+    expect(parseArgs([]).patient).toBeUndefined();
+  });
+});

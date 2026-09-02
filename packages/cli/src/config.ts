@@ -16,6 +16,9 @@ export interface ConfigOptions {
   password?: string;
   /** Enable the in-app AI & Results panel (features.aiResults). */
   ai?: boolean;
+  /** Patient-facing mode (features.patient): hides Add study, New study and
+   *  Download image as JPG. */
+  patient?: boolean;
 }
 
 /** Serialize the auth strategy as a JS object literal, or "" for none/default. */
@@ -40,6 +43,9 @@ function authLiteral(opts: ConfigOptions): string {
 export function configScript(opts: ConfigOptions): string {
   const pacsUrl = sanitize(opts.pacs ?? "");
   const studyUid = sanitize(opts.study ?? "");
-  const featuresLiteral = opts.ai ? `\n  features: { aiResults: true },` : "";
+  const feats: string[] = [];
+  if (opts.ai) feats.push("aiResults: true");
+  if (opts.patient) feats.push("patient: true");
+  const featuresLiteral = feats.length ? `\n  features: { ${feats.join(", ")} },` : "";
   return `window.__ORBIDICOM_CONFIG__ = {\n  pacsUrl: "${pacsUrl}",\n  studyUid: "${studyUid}",${authLiteral(opts)}${featuresLiteral}\n};\n`;
 }

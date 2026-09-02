@@ -21,6 +21,16 @@ const message = ref("");
 const cfg = runtimeConfig();
 const pacsUrl = (cfg.pacsUrl ?? "").trim();
 const hasPacs = pacsUrl.length > 0;
+
+// Patient-facing mode (features.patient / ?patient=1): drop the affordances that
+// only make sense for staff. Translated here into the Viewer's per-feature flags;
+// the "New study" button is this app's own, so it's gated directly in the template.
+const patientMode = cfg.features?.patient === true;
+const viewerFeatures = {
+  aiResults: cfg.features?.aiResults,
+  addStudy: !patientMode,
+  imageDownload: !patientMode,
+};
 const studyUid = ref((cfg.studyUid ?? "").trim());
 
 function openPacs() {
@@ -213,9 +223,10 @@ function onDragLeave(e: DragEvent) {
 
 <template>
   <template v-if="source">
-    <Viewer :source="source" :study-uids="studyUids" :features="cfg.features" title="OrbiDICOM">
+    <Viewer :source="source" :study-uids="studyUids" :features="viewerFeatures" title="OrbiDICOM">
       <template #actions>
         <button
+          v-if="!patientMode"
           class="newstudy"
           :title="t('newStudy')"
           @click="

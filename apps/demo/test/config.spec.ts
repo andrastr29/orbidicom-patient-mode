@@ -6,7 +6,7 @@ describe("mergeConfig", () => {
     expect(mergeConfig({ pacsUrl: "/dicom-web", studyUid: "1.2.3" }, "")).toEqual({
       pacsUrl: "/dicom-web",
       studyUid: "1.2.3",
-      features: { aiResults: false },
+      features: { aiResults: false, patient: false },
     });
   });
 
@@ -19,7 +19,7 @@ describe("mergeConfig", () => {
     ).toEqual({
       pacsUrl: "https://pacs.example/dicom-web",
       studyUid: "9.9.9",
-      features: { aiResults: false },
+      features: { aiResults: false, patient: false },
     });
   });
 
@@ -33,7 +33,7 @@ describe("mergeConfig", () => {
     expect(mergeConfig({ pacsUrl: "/dicom-web" }, "?pacs=&study=%20%20")).toEqual({
       pacsUrl: "/dicom-web",
       studyUid: "",
-      features: { aiResults: false },
+      features: { aiResults: false, patient: false },
     });
   });
 
@@ -41,7 +41,7 @@ describe("mergeConfig", () => {
     expect(mergeConfig({}, "")).toEqual({
       pacsUrl: "",
       studyUid: "",
-      features: { aiResults: false },
+      features: { aiResults: false, patient: false },
     });
   });
 
@@ -66,5 +66,14 @@ describe("mergeConfig features", () => {
   });
   it("defaults aiResults off", () => {
     expect(mergeConfig({}, "").features?.aiResults).toBe(false);
+  });
+  it("keeps patient mode from the base config", () => {
+    expect(mergeConfig({ features: { patient: true } }, "").features?.patient).toBe(true);
+  });
+  it("enables patient mode via ?patient=1", () => {
+    expect(mergeConfig({}, "?patient=1").features?.patient).toBe(true);
+  });
+  it("defaults patient mode off", () => {
+    expect(mergeConfig({}, "").features?.patient).toBe(false);
   });
 });

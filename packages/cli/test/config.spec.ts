@@ -56,6 +56,14 @@ describe("configScript features", () => {
   it("emits features.aiResults when --ai was set", () => {
     expect(configScript({ ai: true })).toContain("features: { aiResults: true }");
   });
+  it("emits features.patient when --patient was set", () => {
+    expect(configScript({ patient: true })).toContain("features: { patient: true }");
+  });
+  it("combines feature flags in one literal", () => {
+    expect(configScript({ ai: true, patient: true })).toContain(
+      "features: { aiResults: true, patient: true }",
+    );
+  });
   it("omits features when not set", () => {
     expect(configScript({})).not.toContain("features");
   });

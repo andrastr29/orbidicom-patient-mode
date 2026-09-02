@@ -9,6 +9,7 @@
       :title="title"
       :can-download="canDownload"
       :can-download-image="canDownloadImage"
+      :allow-image-download="props.features?.imageDownload !== false"
       :can-export-measurements="canExportMeasurements"
       :can-undo="canUndo"
       :can-redo="canRedo"
@@ -412,8 +413,15 @@ const props = defineProps<{
    * many cells open and which series fills each.
    */
   hangingProtocol?: HangingProtocolName | HangingProtocol;
-  /** Per-deployment feature toggles (from runtime config). */
-  features?: { aiResults?: boolean };
+  /** Per-deployment feature toggles (from runtime config). Each is opt-out:
+   *  omitted or `true` keeps the affordance, only an explicit `false` hides it. */
+  features?: {
+    aiResults?: boolean;
+    /** Show the rail's "Add study" button (when the source also supports it). */
+    addStudy?: boolean;
+    /** Show the toolbar's "Download image as JPG" button. */
+    imageDownload?: boolean;
+  };
 }>();
 /**
  * `studyUids` is a two-way surface: hosts can bind `v-model:study-uids` and see
@@ -675,6 +683,7 @@ const canDownload = computed(
 // Branch on the advertised capability, never on backend type.
 const canAddStudy = computed(
   () =>
+    props.features?.addStudy !== false &&
     !!props.source.capabilities?.multiStudy &&
     !!props.source.capabilities?.studySearch &&
     typeof props.source.searchStudies === "function",
